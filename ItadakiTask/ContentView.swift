@@ -5,7 +5,67 @@ struct SushiTask: Identifiable, Codable, Equatable {
     var title: String
     var category: TaskCategory
     var dueDate: Date
+    var recurrence: TaskRecurrence = .none
     var isEaten = false
+
+    var completedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case category
+        case dueDate
+        case recurrence
+        case isEaten
+        case completedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        category: TaskCategory,
+        dueDate: Date,
+        recurrence: TaskRecurrence = .none,
+        isEaten: Bool = false,
+        completedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.category = category
+        self.dueDate = dueDate
+        self.recurrence = recurrence
+        self.isEaten = isEaten
+        self.completedAt = completedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        category = try container.decode(TaskCategory.self, forKey: .category)
+        dueDate = try container.decode(Date.self, forKey: .dueDate)
+        recurrence = try container.decodeIfPresent(TaskRecurrence.self, forKey: .recurrence) ?? .none
+        isEaten = try container.decodeIfPresent(Bool.self, forKey: .isEaten) ?? false
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+    }
+}
+
+enum TaskRecurrence: String, CaseIterable, Codable, Identifiable {
+    case none = "One time"
+    case daily = "Daily"
+    case weekdays = "Weekdays"
+    case everyThreeDays = "Every 3 days"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .none: "calendar.badge.plus"
+        case .daily: "arrow.trianglehead.2.clockwise"
+        case .weekdays: "calendar"
+        case .everyThreeDays: "repeat"
+        }
+    }
 }
 
 enum TaskCategory: String, CaseIterable, Codable, Identifiable {
@@ -117,12 +177,13 @@ struct ContentView: View {
     @AppStorage("hasAskedCustomerName") private var hasAskedCustomerName = false
     @AppStorage("sushiTasks") private var storedTasks = ""
     @AppStorage("sushiEatenToday") private var sushiEatenToday = 0
+    @AppStorage("sushiMealDayKey") private var sushiMealDayKey = ""
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
     @State private var showingNamePrompt = false
     @State private var draftName = ""
-    @State private var selectedTaskID: SushiTask.ID?
+    @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
 
     private let daypart = Daypart()
 
@@ -135,6 +196,7 @@ struct ContentView: View {
                     HeaderView(
                         customerName: displayName,
                         eatenCount: sushiEatenToday,
+                        maxCount: mealLimit,
                         daypart: daypart
                     ) {
                         draftName = customerName
@@ -144,14 +206,22 @@ struct ContentView: View {
                     ChefStageView(
                         daypart: daypart,
                         nextTask: nextTask,
-                        activeCount: activeTasks.count
+                        activeCount: activeTasks.count,
+                        mealIsFull: mealIsFull
                     )
 
-                    PlateRailView(tasks: activeTasks) { task in
-                        complete(task)
+                    PlateRailView(tasks: activeTasks, isLocked: mealIsFull)
+
+                    if mealIsFull {
+                        CustomerFullCard(daypart: daypart)
                     }
 
-                    TaskBoardView(tasks: tasks, daypart: daypart) { task in
+                    TaskBoardView(
+                        tasks: todaysTasks,
+                        daypart: daypart,
+                        mealIsFull: mealIsFull,
+                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                    ) { task in
                         complete(task)
                     }
                 }
@@ -170,6 +240,7 @@ struct ContentView: View {
         .ignoresSafeArea(.container, edges: .bottom)
         .onAppear {
             loadTasks()
+            resetMealIfNeeded()
             if !hasAskedCustomerName {
                 draftName = customerName
                 showingNamePrompt = true
@@ -202,20 +273,50 @@ struct ContentView: View {
     }
 
     private var activeTasks: [SushiTask] {
-        tasks.filter { !$0.isEaten }.sorted { $0.dueDate < $1.dueDate }
+        todaysTasks.filter { !$0.isEaten }.sorted { $0.dueDate < $1.dueDate }
+    }
+
+    private var todaysTasks: [SushiTask] {
+        tasks
+            .filter { shouldShowToday($0) }
+            .sorted { lhs, rhs in
+                if lhs.isEaten != rhs.isEaten {
+                    return !lhs.isEaten
+                }
+                return lhs.dueDate < rhs.dueDate
+            }
     }
 
     private var nextTask: SushiTask? {
         activeTasks.first
     }
 
+    private var mealLimit: Int {
+        10
+    }
+
+    private var mealIsFull: Bool {
+        sushiEatenToday >= mealLimit
+    }
+
     private func complete(_ task: SushiTask) {
+        resetMealIfNeeded()
+        guard !mealIsFull else { return }
         guard let index = tasks.firstIndex(of: task) else { return }
+        guard !tasks[index].isEaten else { return }
+
         withAnimation(.spring(response: 0.48, dampingFraction: 0.72)) {
             tasks[index].isEaten = true
-            sushiEatenToday += 1
-            selectedTaskID = task.id
+            tasks[index].completedAt = .now
+            sushiEatenToday = min(sushiEatenToday + 1, mealLimit)
+            recentlyEatenTaskIDs.insert(task.id)
             saveTasks()
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            _ = withAnimation(.easeOut(duration: 0.25)) {
+                recentlyEatenTaskIDs.remove(task.id)
+            }
         }
     }
 
@@ -229,10 +330,62 @@ struct ContentView: View {
         tasks = decoded
     }
 
+    private func resetMealIfNeeded() {
+        let today = Self.localDayKey(for: .now)
+        guard sushiMealDayKey != today else { return }
+        sushiMealDayKey = today
+        sushiEatenToday = 0
+        reopenRecurringOrders(for: .now)
+    }
+
+    private func reopenRecurringOrders(for date: Date) {
+        var changed = false
+        for index in tasks.indices where tasks[index].isEaten && tasks[index].recurrence != .none {
+            guard shouldRecur(tasks[index], on: date) else { continue }
+            tasks[index].isEaten = false
+            tasks[index].completedAt = nil
+            changed = true
+        }
+        if changed {
+            saveTasks()
+        }
+    }
+
+    private func shouldShowToday(_ task: SushiTask) -> Bool {
+        if task.isEaten {
+            guard let completedAt = task.completedAt else { return true }
+            return Calendar.current.isDateInToday(completedAt)
+        }
+        return true
+    }
+
+    private func shouldRecur(_ task: SushiTask, on date: Date) -> Bool {
+        switch task.recurrence {
+        case .none:
+            return false
+        case .daily:
+            return true
+        case .weekdays:
+            let weekday = Calendar.current.component(.weekday, from: date)
+            return (2...6).contains(weekday)
+        case .everyThreeDays:
+            guard let completedAt = task.completedAt,
+                  let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: completedAt), to: Calendar.current.startOfDay(for: date)).day else {
+                return false
+            }
+            return days >= 3
+        }
+    }
+
     private func saveTasks() {
         guard let data = try? JSONEncoder().encode(tasks),
               let encoded = String(data: data, encoding: .utf8) else { return }
         storedTasks = encoded
+    }
+
+    private static func localDayKey(for date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
     }
 }
 
@@ -266,6 +419,7 @@ struct SceneBackground: View {
 struct HeaderView: View {
     var customerName: String
     var eatenCount: Int
+    var maxCount: Int
     var daypart: Daypart
     var editName: () -> Void
 
@@ -306,7 +460,7 @@ struct HeaderView: View {
             VStack(spacing: 2) {
                 HStack(spacing: 5) {
                     Text("🍣")
-                    Text("\(eatenCount) / 10")
+                    Text("\(eatenCount) / \(maxCount)")
                         .font(.system(size: 21, weight: .heavy, design: .rounded))
                 }
                 Text("eaten today")
@@ -328,6 +482,7 @@ struct ChefStageView: View {
     var daypart: Daypart
     var nextTask: SushiTask?
     var activeCount: Int
+    var mealIsFull: Bool
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -349,7 +504,7 @@ struct ChefStageView: View {
                     Text("Sushi Champloo")
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
-                    Text(nextTask == nil ? "The plate is clear." : "Chef is serving your next nigiri.")
+                    Text(stageMessage)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.86))
                 }
@@ -371,11 +526,18 @@ struct ChefStageView: View {
         }
         .shadow(color: .black.opacity(0.28), radius: 22, x: 0, y: 14)
     }
+
+    private var stageMessage: String {
+        if mealIsFull {
+            return "Chef bows. Your customer is full."
+        }
+        return nextTask == nil ? "The plate is clear." : "Chef is serving your next nigiri."
+    }
 }
 
 struct PlateRailView: View {
     var tasks: [SushiTask]
-    var complete: (SushiTask) -> Void
+    var isLocked: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -383,7 +545,7 @@ struct PlateRailView: View {
                 Label("Chef's plate", systemImage: "takeoutbag.and.cup.and.straw.fill")
                     .font(.system(size: 19, weight: .black, design: .rounded))
                 Spacer()
-                Text("\(tasks.count) waiting")
+                Text(isLocked ? "full" : "\(tasks.count) waiting")
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .foregroundStyle(.secondary)
             }
@@ -394,9 +556,7 @@ struct PlateRailView: View {
                         EmptyPlateView()
                     } else {
                         ForEach(tasks.prefix(8)) { task in
-                            SushiPlateCard(task: task) {
-                                complete(task)
-                            }
+                            SushiPlateCard(task: task, isLocked: isLocked)
                         }
                     }
                 }
@@ -414,31 +574,29 @@ struct PlateRailView: View {
 
 struct SushiPlateCard: View {
     var task: SushiTask
-    var complete: () -> Void
+    var isLocked: Bool
 
     var body: some View {
-        Button(action: complete) {
-            VStack(spacing: 8) {
-                SushiNigiriView(category: task.category)
-                    .frame(width: 92, height: 64)
-                Text(task.title)
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 112, height: 34)
-                Text(task.dueDate, style: .time)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(12)
-            .background(.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 22))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(task.category.color.opacity(0.55), lineWidth: 1.5)
-            )
+        VStack(spacing: 8) {
+            SushiNigiriView(category: task.category)
+                .frame(width: 92, height: 64)
+                .saturation(isLocked ? 0.35 : 1)
+            Text(task.title)
+                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 112, height: 34)
+            Text(task.dueDate, style: .time)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .padding(12)
+        .background(.white.opacity(isLocked ? 0.56 : 0.78), in: RoundedRectangle(cornerRadius: 22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(task.category.color.opacity(isLocked ? 0.25 : 0.55), lineWidth: 1.5)
+        )
     }
 }
 
@@ -462,9 +620,51 @@ struct EmptyPlateView: View {
     }
 }
 
+struct CustomerFullCard: View {
+    var daypart: Daypart
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(daypart.tint.opacity(0.16))
+                    .frame(width: 78, height: 78)
+                VStack(spacing: -2) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 26, weight: .black))
+                        .rotationEffect(.degrees(18))
+                    Text("🍣")
+                        .font(.system(size: 24))
+                }
+                .foregroundStyle(daypart.tint)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Your customer is full!")
+                    .font(.system(size: 21, weight: .black, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text("Come back tomorrow for another meal.")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26)
+                .stroke(daypart.tint.opacity(0.55), lineWidth: 1.4)
+        )
+        .shadow(color: daypart.tint.opacity(0.18), radius: 18, x: 0, y: 10)
+    }
+}
+
 struct TaskBoardView: View {
     var tasks: [SushiTask]
     var daypart: Daypart
+    var mealIsFull: Bool
+    var recentlyEatenTaskIDs: Set<SushiTask.ID>
     var complete: (SushiTask) -> Void
 
     var body: some View {
@@ -484,8 +684,13 @@ struct TaskBoardView: View {
             }
 
             VStack(spacing: 10) {
-                ForEach(tasks.sorted { $0.dueDate < $1.dueDate }) { task in
-                    TaskRow(task: task, daypart: daypart) {
+                ForEach(tasks) { task in
+                    TaskRow(
+                        task: task,
+                        daypart: daypart,
+                        mealIsFull: mealIsFull,
+                        isEating: recentlyEatenTaskIDs.contains(task.id)
+                    ) {
                         complete(task)
                     }
                 }
@@ -503,6 +708,8 @@ struct TaskBoardView: View {
 struct TaskRow: View {
     var task: SushiTask
     var daypart: Daypart
+    var mealIsFull: Bool
+    var isEating: Bool
     var complete: () -> Void
 
     var body: some View {
@@ -527,6 +734,11 @@ struct TaskRow: View {
                     Text(task.dueDate, style: .time)
                     Text("•")
                     Text(task.category.rawValue)
+                    if task.recurrence != .none {
+                        Text("•")
+                        Image(systemName: task.recurrence.systemImage)
+                        Text(task.recurrence.rawValue)
+                    }
                 }
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(.secondary)
@@ -534,22 +746,94 @@ struct TaskRow: View {
 
             Spacer()
 
-            if task.isEaten {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(.green)
-            } else {
-                Button(action: complete) {
-                    Image(systemName: "circle")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(daypart.tint)
+            ZStack {
+                SushiNigiriView(category: task.category)
+                    .frame(width: 62, height: 44)
+                    .scaleEffect(isEating ? 0.1 : 1)
+                    .opacity(task.isEaten ? 0.12 : 1)
+                    .rotationEffect(.degrees(isEating ? 18 : 0))
+
+                if isEating {
+                    EatenSparkles(tint: task.category.color)
+                        .transition(.scale.combined(with: .opacity))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Eat sushi for \(task.title)")
             }
+            .frame(width: 66, height: 52)
+
+            CompletionCircle(
+                isComplete: task.isEaten,
+                isLocked: mealIsFull && !task.isEaten,
+                tint: daypart.tint,
+                action: complete
+            )
+            .accessibilityLabel(task.isEaten ? "\(task.title) completed" : "Complete \(task.title)")
         }
         .padding(12)
         .background(.white.opacity(task.isEaten ? 0.45 : 0.82), in: RoundedRectangle(cornerRadius: 20))
+        .overlay(alignment: .topTrailing) {
+            if task.isEaten {
+                Text("eaten")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.green.gradient, in: Capsule())
+                    .offset(x: -10, y: -8)
+            }
+        }
+    }
+}
+
+struct CompletionCircle: View {
+    var isComplete: Bool
+    var isLocked: Bool
+    var tint: Color
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .strokeBorder(isLocked ? Color.secondary.opacity(0.35) : tint, lineWidth: 3)
+                    .frame(width: 34, height: 34)
+
+                Circle()
+                    .fill(Color.green.gradient)
+                    .frame(width: isComplete ? 34 : 4, height: isComplete ? 34 : 4)
+                    .opacity(isComplete ? 1 : 0)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+                    .scaleEffect(isComplete ? 1 : 0.2)
+                    .opacity(isComplete ? 1 : 0)
+            }
+            .animation(.spring(response: 0.34, dampingFraction: 0.58), value: isComplete)
+        }
+        .buttonStyle(.plain)
+        .disabled(isComplete || isLocked)
+        .opacity(isLocked ? 0.42 : 1)
+    }
+}
+
+struct EatenSparkles: View {
+    var tint: Color
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<7) { index in
+                Circle()
+                    .fill(index.isMultiple(of: 2) ? tint : .white)
+                    .frame(width: index.isMultiple(of: 2) ? 7 : 5, height: index.isMultiple(of: 2) ? 7 : 5)
+                    .offset(
+                        x: CGFloat(cos(Double(index) * .pi / 3.5) * 26),
+                        y: CGFloat(sin(Double(index) * .pi / 3.5) * 18)
+                    )
+            }
+            Image(systemName: "sparkles")
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(tint)
+        }
     }
 }
 
@@ -614,6 +898,7 @@ struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var category: TaskCategory = .health
+    @State private var recurrence: TaskRecurrence = .none
     @State private var dueDate = Date()
 
     var body: some View {
@@ -643,6 +928,18 @@ struct AddTaskSheet: View {
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
                             .padding(16)
                             .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 18))
+
+                        Picker("Repeat order", selection: $recurrence) {
+                            ForEach(TaskRecurrence.allCases) { option in
+                                Label(option.rawValue, systemImage: option.systemImage)
+                                    .tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 18))
 
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Choose a flavor")
@@ -688,7 +985,7 @@ struct AddTaskSheet: View {
                         Button {
                             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !trimmed.isEmpty else { return }
-                            addTask(SushiTask(title: trimmed, category: category, dueDate: dueDate))
+                            addTask(SushiTask(title: trimmed, category: category, dueDate: dueDate, recurrence: recurrence))
                             dismiss()
                         } label: {
                             Text("Serve Nigiri")
