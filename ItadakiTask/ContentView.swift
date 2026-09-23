@@ -963,12 +963,6 @@ struct ProfileStreakLevelOverlay: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
                 .frame(width: artworkFrame.width * 0.10, alignment: .leading)
-                .background(
-                    Capsule()
-                        .fill(Color(red: 0.28, green: 0.15, blue: 0.10).opacity(0.58))
-                        .padding(.horizontal, -4)
-                        .padding(.vertical, -2)
-                )
                 .position(
                     x: artworkFrame.minX + artworkFrame.width * 0.172,
                     y: artworkFrame.minY + artworkFrame.height * 0.082
@@ -994,16 +988,9 @@ struct ProfileLevelMeter: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.72))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.black.opacity(0.22), lineWidth: 1)
-                    )
-
-                Capsule()
-                    .fill(Color(red: 0.67, green: 1.0, blue: 0.52))
+                    .fill(Color(red: 0.65, green: 1.0, blue: 0.45))
                     .frame(width: fillWidth)
-                    .shadow(color: Color(red: 0.67, green: 1.0, blue: 0.52).opacity(0.7), radius: 3)
+                    .shadow(color: Color(red: 0.65, green: 1.0, blue: 0.45).opacity(0.72), radius: 2)
             }
         }
         .clipShape(Capsule())
