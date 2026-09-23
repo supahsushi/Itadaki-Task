@@ -351,11 +351,19 @@ struct ContentView: View {
     private func loadTasks() {
         guard let data = storedTasks.data(using: .utf8),
               let decoded = try? JSONDecoder().decode([SushiTask].self, from: data) else {
-            tasks = SampleData.tasks
+            tasks = []
             saveTasks()
             return
         }
-        tasks = decoded
+        tasks = isLegacySampleSeed(decoded) ? [] : decoded
+        if tasks.count != decoded.count {
+            saveTasks()
+        }
+    }
+
+    private func isLegacySampleSeed(_ decoded: [SushiTask]) -> Bool {
+        let sampleTitles = Set(["Drink water", "Play tennis", "Work on portfolio", "Read a book"])
+        return decoded.count == sampleTitles.count && Set(decoded.map(\.title)) == sampleTitles
     }
 
     private func resetMealIfNeeded() {
@@ -1018,21 +1026,6 @@ struct AssetImage: View {
                     .foregroundStyle(.white)
             }
         }
-    }
-}
-
-enum SampleData {
-    static var tasks: [SushiTask] {
-        [
-            SushiTask(title: "Drink water", category: .health, dueDate: hour(8)),
-            SushiTask(title: "Play tennis", category: .sports, dueDate: hour(10)),
-            SushiTask(title: "Work on portfolio", category: .work, dueDate: hour(13)),
-            SushiTask(title: "Read a book", category: .learning, dueDate: hour(19))
-        ]
-    }
-
-    private static func hour(_ hour: Int) -> Date {
-        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
     }
 }
 
