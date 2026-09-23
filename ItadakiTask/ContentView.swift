@@ -6,6 +6,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
     var category: TaskCategory
     var dueDate: Date
     var recurrence: TaskRecurrence = .none
+    var hasReminder = false
     var isEaten = false
 
     var completedAt: Date?
@@ -16,6 +17,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         case category
         case dueDate
         case recurrence
+        case hasReminder
         case isEaten
         case completedAt
     }
@@ -26,6 +28,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         category: TaskCategory,
         dueDate: Date,
         recurrence: TaskRecurrence = .none,
+        hasReminder: Bool = false,
         isEaten: Bool = false,
         completedAt: Date? = nil
     ) {
@@ -34,6 +37,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         self.category = category
         self.dueDate = dueDate
         self.recurrence = recurrence
+        self.hasReminder = hasReminder
         self.isEaten = isEaten
         self.completedAt = completedAt
     }
@@ -45,16 +49,18 @@ struct SushiTask: Identifiable, Codable, Equatable {
         category = try container.decode(TaskCategory.self, forKey: .category)
         dueDate = try container.decode(Date.self, forKey: .dueDate)
         recurrence = try container.decodeIfPresent(TaskRecurrence.self, forKey: .recurrence) ?? .none
+        hasReminder = try container.decodeIfPresent(Bool.self, forKey: .hasReminder) ?? false
         isEaten = try container.decodeIfPresent(Bool.self, forKey: .isEaten) ?? false
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
     }
 }
 
-enum TaskRecurrence: String, CaseIterable, Codable, Identifiable {
-    case none = "One time"
+enum TaskRecurrence: String, CaseIterable, Identifiable {
+    case none = "Never"
     case daily = "Daily"
     case weekdays = "Weekdays"
-    case everyThreeDays = "Every 3 days"
+    case weekly = "Weekly"
+    case custom = "Custom"
 
     var id: String { rawValue }
 
@@ -63,7 +69,28 @@ enum TaskRecurrence: String, CaseIterable, Codable, Identifiable {
         case .none: "calendar.badge.plus"
         case .daily: "arrow.trianglehead.2.clockwise"
         case .weekdays: "calendar"
-        case .everyThreeDays: "repeat"
+        case .weekly: "calendar.badge.clock"
+        case .custom: "slider.horizontal.3"
+        }
+    }
+}
+
+extension TaskRecurrence: Codable {
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        switch value {
+        case "One time", "Never":
+            self = .none
+        case "Daily":
+            self = .daily
+        case "Weekdays":
+            self = .weekdays
+        case "Weekly":
+            self = .weekly
+        case "Every 3 days", "Custom":
+            self = .custom
+        default:
+            self = .none
         }
     }
 }
@@ -364,7 +391,13 @@ struct ContentView: View {
         case .weekdays:
             let weekday = Calendar.current.component(.weekday, from: date)
             return (2...6).contains(weekday)
-        case .everyThreeDays:
+        case .weekly:
+            guard let completedAt = task.completedAt,
+                  let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: completedAt), to: Calendar.current.startOfDay(for: date)).day else {
+                return false
+            }
+            return days >= 7
+        case .custom:
             guard let completedAt = task.completedAt,
                   let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: completedAt), to: Calendar.current.startOfDay(for: date)).day else {
                 return false
@@ -904,117 +937,199 @@ struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var category: TaskCategory = .health
+    @State private var hasReminder = false
     @State private var recurrence: TaskRecurrence = .none
     @State private var dueDate = Date()
 
     var body: some View {
-        NavigationStack {
+        GeometryReader { proxy in
             ZStack {
                 AssetImage(name: daypart.orderAsset)
                     .scaledToFill()
                     .ignoresSafeArea()
-                    .opacity(0.25)
+                    .opacity(0.72)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Add a Task")
-                                .font(.system(size: 34, weight: .black, design: .rounded))
-                            Text("Tell Chef what sushi to serve on your plate.")
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(.secondary)
-                        }
+                LinearGradient(
+                    colors: [.black.opacity(0.03), .black.opacity(0.08), .black.opacity(0.34)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
-                        TextField("What would you like to do?", text: $title)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .padding(16)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 18))
-
-                        DatePicker("Serve it at", selection: $dueDate, displayedComponents: [.hourAndMinute])
-                            .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            .padding(16)
-                            .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 18))
-
-                        Picker("Repeat order", selection: $recurrence) {
-                            ForEach(TaskRecurrence.allCases) { option in
-                                Label(option.rawValue, systemImage: option.systemImage)
-                                    .tag(option)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 18))
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Choose a flavor")
-                                .font(.system(size: 18, weight: .black, design: .rounded))
-
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                                ForEach(TaskCategory.allCases) { option in
-                                    Button {
-                                        category = option
-                                    } label: {
-                                        VStack(spacing: 7) {
-                                            Image(systemName: option.icon)
-                                                .font(.system(size: 24, weight: .bold))
-                                            Text(option.rawValue)
-                                                .font(.system(size: 12, weight: .black, design: .rounded))
-                                                .lineLimit(1)
-                                                .minimumScaleFactor(0.75)
-                                        }
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 82)
-                                        .foregroundStyle(category == option ? .white : .primary)
-                                        .background(category == option ? option.color.gradient : Color.white.opacity(0.86).gradient, in: RoundedRectangle(cornerRadius: 18))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-
-                        HStack(spacing: 12) {
-                            SushiNigiriView(category: category)
-                                .frame(width: 132, height: 88)
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("Nigiri preview")
-                                    .font(.system(size: 18, weight: .black, design: .rounded))
-                                Text("This appears on your plate until you finish the task.")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(16)
-                        .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 22))
-
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
                         Button {
-                            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !trimmed.isEmpty else { return }
-                            addTask(SushiTask(title: trimmed, category: category, dueDate: dueDate, recurrence: recurrence))
                             dismiss()
                         } label: {
-                            Text("Serve Nigiri")
-                                .font(.system(size: 20, weight: .black, design: .rounded))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 17)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .black))
                                 .foregroundStyle(.white)
-                                .background(daypart.tint.gradient, in: RoundedRectangle(cornerRadius: 20))
+                                .frame(width: 34, height: 34)
+                                .background(Color(red: 0.96, green: 0.22, blue: 0.54), in: Circle())
+                                .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
                         }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                        .buttonStyle(.plain)
                     }
-                    .padding(22)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
-                        dismiss()
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, max(12, proxy.safeAreaInsets.top + 4))
+
+                    Spacer(minLength: 0)
+
+                    orderBoard
+                        .frame(maxHeight: min(620, proxy.size.height * 0.72))
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, max(18, proxy.safeAreaInsets.bottom + 10))
                 }
             }
         }
+    }
+
+    private var orderBoard: some View {
+        VStack(spacing: 9) {
+            VStack(spacing: 2) {
+                Text("Add a Task")
+                    .font(.system(size: 27, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
+                Text("Tell Chef what you want to do!")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.36, green: 0.24, blue: 0.18))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                TextField("What would you like to do?", text: $title)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .frame(height: 42)
+                    .background(.white, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color(red: 0.96, green: 0.82, blue: 0.68), lineWidth: 1)
+                    )
+
+                Text("Example: Text Mom back, Water the succulents, Take a nap")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.33, green: 0.46, blue: 0.68))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Choose a category (optional)")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 4), spacing: 7) {
+                    ForEach(TaskCategory.allCases) { option in
+                        CategoryTile(option: option, isSelected: category == option) {
+                            category = option
+                        }
+                    }
+                }
+            }
+
+            VStack(spacing: 7) {
+                Toggle(isOn: $hasReminder) {
+                    Label("Reminder optional", systemImage: "bell.badge")
+                }
+                .toggleStyle(.switch)
+                .font(.system(size: 13, weight: .black, design: .rounded))
+
+                HStack(spacing: 7) {
+                    DatePicker("Date", selection: $dueDate, displayedComponents: [.date])
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                    DatePicker("Time", selection: $dueDate, displayedComponents: [.hourAndMinute])
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                }
+
+                Picker("Repeat", selection: $recurrence) {
+                    ForEach(TaskRecurrence.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(10)
+            .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 16))
+
+            Button {
+                let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                addTask(SushiTask(title: trimmed, category: category, dueDate: dueDate, recurrence: recurrence, hasReminder: hasReminder))
+                dismiss()
+            } label: {
+                Text("Add Task")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .foregroundStyle(.white)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.24, blue: 0.57),
+                                Color(red: 0.94, green: 0.12, blue: 0.44)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        in: Capsule()
+                    )
+                    .shadow(color: Color(red: 0.94, green: 0.12, blue: 0.44).opacity(0.28), radius: 10, y: 6)
+            }
+            .buttonStyle(.plain)
+            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 14)
+        .padding(.bottom, 16)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 1.0, green: 0.97, blue: 0.91),
+                    Color(red: 1.0, green: 0.89, blue: 0.78)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            ),
+            in: RoundedRectangle(cornerRadius: 30)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 30)
+                .stroke(Color(red: 0.55, green: 0.28, blue: 0.13).opacity(0.45), lineWidth: 2)
+        )
+        .shadow(color: .black.opacity(0.26), radius: 24, y: 14)
+    }
+}
+
+struct CategoryTile: View {
+    var option: TaskCategory
+    var isSelected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: option.icon)
+                    .font(.system(size: 17, weight: .black))
+                Text(option.rawValue)
+                    .font(.system(size: 9.5, weight: .black, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .foregroundStyle(isSelected ? .white : Color(red: 0.10, green: 0.16, blue: 0.32))
+            .background(isSelected ? option.color.gradient : Color.white.opacity(0.88).gradient, in: RoundedRectangle(cornerRadius: 11))
+            .overlay(
+                RoundedRectangle(cornerRadius: 11)
+                    .stroke(isSelected ? Color.white.opacity(0.85) : Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
