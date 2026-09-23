@@ -393,15 +393,13 @@ struct ContentView: View {
             loadTasks()
             resetMealIfNeeded()
         }
-        .sheet(isPresented: $showingAddTask) {
+        .fullScreenCover(isPresented: $showingAddTask) {
             AddTaskSheet(daypart: daypart) { task in
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
                     tasks.append(task)
                     saveTasks()
                 }
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
         .alert("What is the customer's name?", isPresented: $showingNamePrompt) {
             TextField("Customer name", text: $draftName)
@@ -487,7 +485,9 @@ struct ContentView: View {
             return
         }
         tasks = isLegacySampleSeed(decoded) ? [] : decoded
-        if tasks.count != decoded.count {
+        let countBeforePruning = tasks.count
+        pruneExpiredCompletedTasks()
+        if tasks.count != decoded.count || tasks.count != countBeforePruning {
             saveTasks()
         }
     }
@@ -499,10 +499,22 @@ struct ContentView: View {
 
     private func resetMealIfNeeded() {
         let today = Self.localDayKey(for: .now)
+        let countBeforePruning = tasks.count
+        pruneExpiredCompletedTasks()
+        if tasks.count != countBeforePruning {
+            saveTasks()
+        }
         guard sushiMealDayKey != today else { return }
         sushiMealDayKey = today
         sushiEatenToday = 0
         reopenRecurringOrders(for: .now)
+    }
+
+    private func pruneExpiredCompletedTasks(now: Date = .now) {
+        let expirationDate = now.addingTimeInterval(-24 * 60 * 60)
+        tasks.removeAll { task in
+            task.recurrence == .none && task.isEaten && (task.completedAt ?? now) <= expirationDate
+        }
     }
 
     private func reopenRecurringOrders(for date: Date) {
@@ -709,7 +721,7 @@ struct TaskRow: View {
     var complete: () -> Void
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             VStack(spacing: 3) {
                 ForEach(0..<3) { _ in
                     HStack(spacing: 3) {
@@ -720,49 +732,14 @@ struct TaskRow: View {
             }
             .frame(width: 16)
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(task.category.color.gradient)
-                Image(systemName: task.category.icon)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(task.title)
-                    .font(.system(size: 14, weight: .black, design: .rounded))
-                    .foregroundStyle(task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33))
-                    .strikethrough(task.isEaten, color: .secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                HStack(spacing: 6) {
-                    Text("Today")
-                    Text(task.dueDate, style: .time)
-                    if task.recurrence != .none {
-                        Image(systemName: task.recurrence.systemImage)
-                        Text(task.recurrence.rawValue)
-                    }
-                }
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(red: 0.26, green: 0.34, blue: 0.48))
-            }
+            Text(task.title)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundStyle(task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33))
+                .strikethrough(task.isEaten, color: .secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
 
             Spacer()
-
-            ZStack {
-                SushiNigiriView(category: task.category)
-                    .frame(width: 48, height: 32)
-                    .scaleEffect(isEating ? 0.1 : 1)
-                    .opacity(task.isEaten ? 0.12 : 1)
-                    .rotationEffect(.degrees(isEating ? 18 : 0))
-
-                if isEating {
-                    EatenSparkles(tint: task.category.color)
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .frame(width: 52, height: 34)
 
             CompletionCircle(
                 isComplete: task.isEaten,
@@ -774,7 +751,6 @@ struct TaskRow: View {
         }
         .padding(.horizontal, 8)
         .frame(height: 38)
-        .background(Color.white.opacity(task.isEaten ? 0.42 : 0.74), in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -838,196 +814,117 @@ struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var category: TaskCategory = .health
-    @State private var hasReminder = false
-    @State private var recurrence: TaskRecurrence = .none
     @State private var dueDate = Date()
 
     var body: some View {
         GeometryReader { proxy in
-            let isCompactHeight = proxy.size.height < 880
-            let topPadding = max(12, proxy.safeAreaInsets.top + 4)
-            let bottomPadding = max(14, proxy.safeAreaInsets.bottom + 8)
-            let boardMaxHeight = proxy.size.height - topPadding - bottomPadding - 42
+            let artworkFrame = orderArtworkFrame(container: proxy.size)
 
             ZStack {
                 AssetImage(name: daypart.orderAsset)
                     .aspectRatio(contentMode: .fill)
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
-                    .opacity(0.72)
                     .ignoresSafeArea()
 
-                LinearGradient(
-                    colors: [.black.opacity(0.03), .black.opacity(0.08), .black.opacity(0.34)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Spacer()
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(.white)
-                                .frame(width: 34, height: 34)
-                                .background(Color(red: 0.96, green: 0.22, blue: 0.54), in: Circle())
-                                .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, topPadding)
-
-                    Spacer(minLength: 0)
-
-                    orderBoard(compact: isCompactHeight)
-                        .frame(maxHeight: boardMaxHeight)
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, bottomPadding)
+                Button {
+                    dismiss()
+                } label: {
+                    Color.black.opacity(0.001)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipped()
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close Add Task")
+                .frame(width: artworkFrame.width * 0.085, height: artworkFrame.width * 0.085)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.915,
+                    y: artworkFrame.minY + artworkFrame.height * 0.471
+                )
+
+                TextField("", text: $title)
+                    .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
+                    .submitLabel(.done)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, artworkFrame.width * 0.034)
+                    .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.036)
+                    .background(Color.white.opacity(0.001), in: Capsule())
+                    .position(
+                        x: artworkFrame.midX,
+                        y: artworkFrame.minY + artworkFrame.height * 0.507
+                    )
+                    .accessibilityLabel("What would you like to do?")
+
+                ForEach(Array(TaskCategory.allCases.enumerated()), id: \.element.id) { index, option in
+                    categoryButton(option: option, index: index, artworkFrame: artworkFrame)
+                }
+
+                Button {
+                    submitTask()
+                } label: {
+                    Color.black.opacity(0.001)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add Task")
+                .frame(width: artworkFrame.width * 0.36, height: artworkFrame.height * 0.05)
+                .position(
+                    x: artworkFrame.midX,
+                    y: artworkFrame.minY + artworkFrame.height * 0.724
+                )
+                .disabled(trimmedTitle.isEmpty)
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+            .ignoresSafeArea()
         }
+        .ignoresSafeArea()
     }
 
-    private func orderBoard(compact: Bool) -> some View {
-        VStack(spacing: compact ? 7 : 9) {
-            VStack(spacing: 2) {
-                Text("Add a Task")
-                    .font(.system(size: compact ? 24 : 27, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
-                Text("Tell Chef what you want to do!")
-                    .font(.system(size: compact ? 12 : 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.36, green: 0.24, blue: 0.18))
-            }
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                TextField("What would you like to do?", text: $title)
-                    .font(.system(size: compact ? 15 : 16, weight: .bold, design: .rounded))
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 14)
-                    .frame(height: compact ? 38 : 42)
-                    .background(.white, in: Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(Color(red: 0.96, green: 0.82, blue: 0.68), lineWidth: 1)
-                    )
+    private func submitTask() {
+        guard !trimmedTitle.isEmpty else { return }
+        addTask(SushiTask(title: trimmedTitle, category: category, dueDate: dueDate))
+        dismiss()
+    }
 
-                Text("Example: Text Mom back, Water the succulents, Take a nap")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.33, green: 0.46, blue: 0.68))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
+    private func orderArtworkFrame(container: CGSize) -> CGRect {
+        let artworkSize = CGSize(width: 853, height: 1844)
+        let scale = max(container.width / artworkSize.width, container.height / artworkSize.height)
+        let width = artworkSize.width * scale
+        let height = artworkSize.height * scale
+        return CGRect(
+            x: (container.width - width) / 2,
+            y: (container.height - height) / 2,
+            width: width,
+            height: height
+        )
+    }
 
-            VStack(alignment: .leading, spacing: compact ? 5 : 7) {
-                Text("Choose a category (optional)")
-                    .font(.system(size: compact ? 13 : 14, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
+    private func categoryButton(option: TaskCategory, index: Int, artworkFrame: CGRect) -> some View {
+        let column = index % 7
+        let row = index / 7
+        let centerX = artworkFrame.minX + artworkFrame.width * (0.132 + CGFloat(column) * 0.126)
+        let centerY = artworkFrame.minY + artworkFrame.height * (row == 0 ? 0.586 : 0.651)
+        let tileWidth = artworkFrame.width * 0.11
+        let tileHeight = artworkFrame.height * 0.052
 
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: compact ? 6 : 7) {
-                    ForEach(TaskCategory.allCases) { option in
-                        CategoryTile(option: option, isSelected: category == option, compact: compact) {
-                            category = option
-                        }
-                    }
-                }
-            }
-
-            VStack(spacing: compact ? 5 : 7) {
-                Toggle(isOn: $hasReminder) {
-                    Label("Reminder optional", systemImage: "bell.badge")
-                }
-                .toggleStyle(.switch)
-                .font(.system(size: 13, weight: .black, design: .rounded))
-
-                HStack(spacing: 7) {
-                    DatePicker("Date", selection: $dueDate, displayedComponents: [.date])
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity)
-                    DatePicker("Time", selection: $dueDate, displayedComponents: [.hourAndMinute])
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity)
-                }
-
-                Menu {
-                    Picker("Repeat", selection: $recurrence) {
-                        ForEach(TaskRecurrence.allCases) { option in
-                            Label(option.rawValue, systemImage: option.systemImage)
-                                .tag(option)
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Label("Repeat", systemImage: "repeat")
-                            .font(.system(size: 13, weight: .black, design: .rounded))
-                        Spacer()
-                        Text(recurrence.rawValue)
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10, weight: .black))
-                    }
-                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
-                    .padding(.horizontal, 11)
-                    .frame(height: compact ? 34 : 38)
-                    .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-            .padding(compact ? 8 : 10)
-            .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 16))
-
-            Button {
-                let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { return }
-                addTask(SushiTask(title: trimmed, category: category, dueDate: dueDate, recurrence: recurrence, hasReminder: hasReminder))
-                dismiss()
-            } label: {
-                Text("Add Task")
-                    .font(.system(size: compact ? 18 : 20, weight: .black, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: compact ? 45 : 50)
-                    .foregroundStyle(.white)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 1.0, green: 0.24, blue: 0.57),
-                                Color(red: 0.94, green: 0.12, blue: 0.44)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        in: Capsule()
-                    )
-                    .shadow(color: Color(red: 0.94, green: 0.12, blue: 0.44).opacity(0.28), radius: 10, y: 6)
-            }
-            .buttonStyle(.plain)
-            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+        return Button {
+            category = option
+        } label: {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.001))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(category == option ? Color(red: 1.0, green: 0.24, blue: 0.57) : .clear, lineWidth: 3)
+                        .shadow(color: Color(red: 1.0, green: 0.24, blue: 0.57).opacity(category == option ? 0.45 : 0), radius: 5)
+                )
         }
-        .padding(.horizontal, compact ? 14 : 18)
-        .padding(.top, compact ? 11 : 14)
-        .padding(.bottom, compact ? 12 : 16)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 1.0, green: 0.97, blue: 0.91),
-                    Color(red: 1.0, green: 0.89, blue: 0.78)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
-            in: RoundedRectangle(cornerRadius: 30)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 30)
-                .stroke(Color(red: 0.55, green: 0.28, blue: 0.13).opacity(0.45), lineWidth: 2)
-        )
-        .shadow(color: .black.opacity(0.26), radius: 24, y: 14)
+        .buttonStyle(.plain)
+        .accessibilityLabel(option.rawValue)
+        .frame(width: tileWidth, height: tileHeight)
+        .position(x: centerX, y: centerY)
     }
 }
 
