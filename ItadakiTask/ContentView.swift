@@ -1319,13 +1319,13 @@ struct AddTaskSheet: View {
 
                     if title.isEmpty {
                         Text("What would you like to do?")
-                            .font(.system(size: max(15, artworkFrame.width * 0.021), weight: .bold, design: .rounded))
+                            .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .bold, design: .rounded))
                             .foregroundStyle(Color(red: 0.45, green: 0.49, blue: 0.58).opacity(0.72))
                             .padding(.horizontal, artworkFrame.width * 0.034)
                     }
 
                     TextField("", text: $title)
-                        .font(.system(size: max(16, artworkFrame.width * 0.023), weight: .black, design: .rounded))
+                        .font(.system(size: max(15, artworkFrame.width * 0.020), weight: .black, design: .rounded))
                         .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
                         .submitLabel(.done)
                         .textFieldStyle(.plain)
@@ -1384,7 +1384,7 @@ struct AddTaskSheet: View {
                 .disabled(trimmedTitle.isEmpty)
 
                 Text("Add Task")
-                    .font(.system(size: max(22, artworkFrame.width * 0.034), weight: .black, design: .rounded))
+                    .font(.system(size: max(19, artworkFrame.width * 0.027), weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
                     .allowsHitTesting(false)
@@ -1547,37 +1547,91 @@ struct AddTaskTextCleanupLayer: View {
     var artworkFrame: CGRect
 
     private var paper: Color {
-        Color(red: 1.0, green: 0.92, blue: 0.80).opacity(0.94)
+        Color(red: 1.0, green: 0.91, blue: 0.78).opacity(0.98)
     }
 
     private var tilePaper: Color {
-        Color.white.opacity(0.96)
+        Color.white.opacity(0.97)
+    }
+
+    private var pinkButton: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 1.0, green: 0.36, blue: 0.58),
+                Color(red: 1.0, green: 0.10, blue: 0.43)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     var body: some View {
         ZStack {
-            cleanupPatch(width: 0.42, height: 0.036, x: 0.50, y: 0.471, color: paper)
-            cleanupPatch(width: 0.46, height: 0.020, x: 0.50, y: 0.492, color: paper)
-            cleanupPatch(width: 0.60, height: 0.020, x: 0.50, y: 0.548, color: paper)
-            cleanupPatch(width: 0.13, height: 0.020, x: 0.866, y: 0.532, color: tilePaper)
-            cleanupPatch(width: 0.28, height: 0.030, x: 0.205, y: 0.560, color: paper)
-            cleanupPatch(width: 0.31, height: 0.030, x: 0.210, y: 0.588, color: tilePaper)
-            cleanupPatch(width: 0.27, height: 0.030, x: 0.615, y: 0.588, color: tilePaper)
-            cleanupPatch(width: 0.36, height: 0.030, x: 0.230, y: 0.633, color: paper)
+            cleanPanel(width: 0.86, height: 0.276, x: 0.50, y: 0.588)
+            cleanupPatch(width: 0.84, height: 0.039, x: 0.50, y: 0.512, color: tilePaper, corner: 0.018)
+            cleanupPatch(width: 0.42, height: 0.046, x: 0.267, y: 0.587, color: tilePaper, corner: 0.018)
+            cleanupPatch(width: 0.36, height: 0.046, x: 0.661, y: 0.587, color: tilePaper, corner: 0.018)
 
             ForEach(AddTaskRepeatOption.allCases) { option in
-                cleanupPatch(width: option.width * 0.82, height: 0.030, x: option.centerX, y: 0.654, color: tilePaper)
+                cleanupPatch(width: option.width, height: 0.043, x: option.centerX, y: 0.653, color: tilePaper, corner: 0.018)
             }
 
-            cleanupPatch(width: 0.29, height: 0.035, x: 0.50, y: 0.702, color: Color(red: 1.0, green: 0.14, blue: 0.44).opacity(0.98))
+            buttonPatch(width: 0.36, height: 0.047, x: 0.50, y: 0.702)
+            closeButtonPatch(x: 0.915, y: 0.471)
         }
         .allowsHitTesting(false)
     }
 
-    private func cleanupPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat, color: Color) -> some View {
+    private func cleanPanel(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: artworkFrame.width * 0.032)
+            .fill(paper)
+            .overlay(
+                RoundedRectangle(cornerRadius: artworkFrame.width * 0.032)
+                    .stroke(Color(red: 0.66, green: 0.38, blue: 0.18).opacity(0.24), lineWidth: 2)
+            )
+            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * x,
+                y: artworkFrame.minY + artworkFrame.height * y
+            )
+    }
+
+    private func cleanupPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat, color: Color, corner: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: artworkFrame.width * 0.014)
             .fill(color)
+            .clipShape(RoundedRectangle(cornerRadius: artworkFrame.width * corner))
+            .overlay(
+                RoundedRectangle(cornerRadius: artworkFrame.width * corner)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            )
             .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * x,
+                y: artworkFrame.minY + artworkFrame.height * y
+            )
+    }
+
+    private func buttonPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        Capsule()
+            .fill(pinkButton)
+            .shadow(color: Color(red: 0.65, green: 0.05, blue: 0.25).opacity(0.32), radius: 4, y: 2)
+            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * x,
+                y: artworkFrame.minY + artworkFrame.height * y
+            )
+    }
+
+    private func closeButtonPatch(x: CGFloat, y: CGFloat) -> some View {
+        Circle()
+            .fill(pinkButton)
+            .overlay(
+                Image(systemName: "xmark")
+                    .font(.system(size: max(13, artworkFrame.width * 0.020), weight: .black))
+                    .foregroundStyle(.white)
+            )
+            .shadow(color: Color(red: 0.65, green: 0.05, blue: 0.25).opacity(0.25), radius: 3, y: 1)
+            .frame(width: artworkFrame.width * 0.052, height: artworkFrame.width * 0.052)
             .position(
                 x: artworkFrame.minX + artworkFrame.width * x,
                 y: artworkFrame.minY + artworkFrame.height * y
@@ -1603,39 +1657,39 @@ struct AddTaskStaticTextLayer: View {
     var body: some View {
         ZStack {
             Text("Add a Task")
-                .font(.system(size: max(22, artworkFrame.width * 0.035), weight: .black, design: .rounded))
+                .font(.system(size: max(19, artworkFrame.width * 0.030), weight: .black, design: .rounded))
                 .foregroundStyle(ink)
                 .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.470)
 
             Text("Tell Chef what you want to do!")
-                .font(.system(size: max(12, artworkFrame.width * 0.017), weight: .semibold, design: .rounded))
+                .font(.system(size: max(10, artworkFrame.width * 0.014), weight: .semibold, design: .rounded))
                 .foregroundStyle(ink.opacity(0.84))
                 .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.492)
 
             Text("e.g. Drink water, Read a book, Go for a walk...")
-                .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .bold, design: .rounded))
+                .font(.system(size: max(9.5, artworkFrame.width * 0.013), weight: .bold, design: .rounded))
                 .foregroundStyle(softInk.opacity(0.78))
-                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.548)
+                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.544)
 
             Text("\(titleCount)/60")
-                .font(.system(size: max(11, artworkFrame.width * 0.017), weight: .black, design: .rounded))
+                .font(.system(size: max(9.5, artworkFrame.width * 0.013), weight: .black, design: .rounded))
                 .foregroundStyle(softInk.opacity(0.80))
                 .position(x: artworkFrame.minX + artworkFrame.width * 0.872, y: artworkFrame.minY + artworkFrame.height * 0.532)
 
             Text("Date & Time")
-                .font(.system(size: max(16, artworkFrame.width * 0.024), weight: .black, design: .rounded))
+                .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .black, design: .rounded))
                 .foregroundStyle(ink)
                 .frame(width: artworkFrame.width * 0.28, alignment: .leading)
-                .position(x: artworkFrame.minX + artworkFrame.width * 0.215, y: artworkFrame.minY + artworkFrame.height * 0.561)
+                .position(x: artworkFrame.minX + artworkFrame.width * 0.215, y: artworkFrame.minY + artworkFrame.height * 0.559)
 
             dateTileLabel("Date", detail: dateText, x: 0.267)
             dateTileLabel("Time", detail: timeText, x: 0.661)
 
             Text("Repeat")
-                .font(.system(size: max(16, artworkFrame.width * 0.024), weight: .black, design: .rounded))
+                .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .black, design: .rounded))
                 .foregroundStyle(ink)
                 .frame(width: artworkFrame.width * 0.24, alignment: .leading)
-                .position(x: artworkFrame.minX + artworkFrame.width * 0.203, y: artworkFrame.minY + artworkFrame.height * 0.633)
+                .position(x: artworkFrame.minX + artworkFrame.width * 0.203, y: artworkFrame.minY + artworkFrame.height * 0.631)
 
             ForEach(AddTaskRepeatOption.allCases) { option in
                 repeatLabel(option)
@@ -1647,10 +1701,10 @@ struct AddTaskStaticTextLayer: View {
     private func dateTileLabel(_ title: String, detail: String, x: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title)
-                .font(.system(size: max(10, artworkFrame.width * 0.015), weight: .black, design: .rounded))
+                .font(.system(size: max(9, artworkFrame.width * 0.013), weight: .black, design: .rounded))
                 .foregroundStyle(ink.opacity(0.92))
             Text(detail)
-                .font(.system(size: max(12, artworkFrame.width * 0.018), weight: .black, design: .rounded))
+                .font(.system(size: max(10, artworkFrame.width * 0.015), weight: .black, design: .rounded))
                 .foregroundStyle(ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
@@ -1662,13 +1716,13 @@ struct AddTaskStaticTextLayer: View {
     private func repeatLabel(_ option: AddTaskRepeatOption) -> some View {
         VStack(spacing: 1) {
             Text(option.title)
-                .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .black, design: .rounded))
+                .font(.system(size: max(9.5, artworkFrame.width * 0.0135), weight: .black, design: .rounded))
                 .foregroundStyle(repeatOption == option ? Color(red: 1.0, green: 0.14, blue: 0.43) : ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
             if let subtitle = option.subtitle {
                 Text(subtitle)
-                    .font(.system(size: max(8, artworkFrame.width * 0.012), weight: .bold, design: .rounded))
+                    .font(.system(size: max(7.5, artworkFrame.width * 0.0105), weight: .bold, design: .rounded))
                     .foregroundStyle(softInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
