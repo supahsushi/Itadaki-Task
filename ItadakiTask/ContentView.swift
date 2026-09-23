@@ -431,6 +431,12 @@ struct ContentView: View {
                     artworkFrame: artworkFrame
                 )
 
+                MealCountOverlay(
+                    eatenCount: sushiEatenToday,
+                    maxCount: mealLimit,
+                    artworkFrame: artworkFrame
+                )
+
                 if !mealIsFull {
                     Button {
                         showingAddTask = true
@@ -1015,6 +1021,34 @@ struct MealCountText: View {
             .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
+    }
+}
+
+struct MealCountOverlay: View {
+    var eatenCount: Int
+    var maxCount: Int
+    var artworkFrame: CGRect
+
+    var body: some View {
+        Text("\(eatenCount) / \(maxCount)")
+            .font(.system(size: max(20, artworkFrame.width * 0.037), weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.70), radius: 2, y: 1)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .multilineTextAlignment(.center)
+            .frame(width: artworkFrame.width * 0.18, height: artworkFrame.height * 0.035)
+            .background(
+                RoundedRectangle(cornerRadius: artworkFrame.width * 0.016)
+                    .fill(Color(red: 0.25, green: 0.12, blue: 0.07).opacity(0.82))
+                    .blur(radius: 0.2)
+            )
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * 0.835,
+                y: artworkFrame.minY + artworkFrame.height * 0.067
+            )
+            .allowsHitTesting(false)
+            .accessibilityLabel("\(eatenCount) of \(maxCount) sushi eaten today")
     }
 }
 
