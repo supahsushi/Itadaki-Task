@@ -371,6 +371,19 @@ enum Daypart {
             CGSize(width: 851, height: 1847)
         }
     }
+
+    var thankAsset: String {
+        switch self {
+        case .morning, .noon:
+            "ThankNoon"
+        case .night:
+            "ThankNight"
+        }
+    }
+
+    var thankArtworkSize: CGSize {
+        CGSize(width: 851, height: 1848)
+    }
 }
 
 struct ContentView: View {
@@ -397,9 +410,11 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let backgroundAsset = mealIsFull ? daypart.thankAsset : daypart.chefAsset
+            let backgroundArtworkSize = mealIsFull ? daypart.thankArtworkSize : daypart.chefArtworkSize
             let artworkFrame = fittedArtworkFrame(
                 container: proxy.size,
-                artwork: daypart.chefArtworkSize
+                artwork: backgroundArtworkSize
             )
             let rowArea = CGRect(
                 x: artworkFrame.minX + artworkFrame.width * 0.075,
@@ -409,31 +424,33 @@ struct ContentView: View {
             )
 
             ZStack {
-                ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
+                ArtworkBackground(name: backgroundAsset, artworkSize: backgroundArtworkSize)
 
-                Button {
-                    showingAddTask = true
-                } label: {
-                    Color.black.opacity(0.001)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add a Task")
-                .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.711,
-                    y: artworkFrame.minY + artworkFrame.height * 0.423
-                )
+                if !mealIsFull {
+                    Button {
+                        showingAddTask = true
+                    } label: {
+                        Color.black.opacity(0.001)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add a Task")
+                    .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
+                    .position(
+                        x: artworkFrame.minX + artworkFrame.width * 0.711,
+                        y: artworkFrame.minY + artworkFrame.height * 0.423
+                    )
 
-                TaskBoardView(
-                    tasks: todaysTasks,
-                    daypart: daypart,
-                    mealIsFull: mealIsFull,
-                    recentlyEatenTaskIDs: recentlyEatenTaskIDs
-                ) { task in
-                    complete(task)
+                    TaskBoardView(
+                        tasks: todaysTasks,
+                        daypart: daypart,
+                        mealIsFull: mealIsFull,
+                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                    ) { task in
+                        complete(task)
+                    }
+                    .frame(width: rowArea.width, height: rowArea.height)
+                    .position(x: rowArea.midX, y: rowArea.midY)
                 }
-                .frame(width: rowArea.width, height: rowArea.height)
-                .position(x: rowArea.midX, y: rowArea.midY)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
