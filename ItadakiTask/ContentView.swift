@@ -388,6 +388,7 @@ struct ContentView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
         }
+        .ignoresSafeArea()
         .onAppear {
             loadTasks()
             resetMealIfNeeded()
