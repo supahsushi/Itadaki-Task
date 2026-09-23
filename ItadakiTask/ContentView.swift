@@ -1,4 +1,6 @@
+import HealthKit
 import SwiftUI
+import UserNotifications
 
 struct SushiTask: Identifiable, Codable, Equatable {
     var id = UUID()
@@ -59,6 +61,7 @@ enum TaskRecurrence: String, CaseIterable, Identifiable {
     case none = "Never"
     case daily = "Daily"
     case weekdays = "Weekdays"
+    case weekends = "Weekends"
     case weekly = "Weekly"
     case custom = "Custom"
 
@@ -69,6 +72,7 @@ enum TaskRecurrence: String, CaseIterable, Identifiable {
         case .none: "calendar.badge.plus"
         case .daily: "arrow.trianglehead.2.clockwise"
         case .weekdays: "calendar"
+        case .weekends: "calendar"
         case .weekly: "calendar.badge.clock"
         case .custom: "slider.horizontal.3"
         }
@@ -85,6 +89,8 @@ extension TaskRecurrence: Codable {
             self = .daily
         case "Weekdays":
             self = .weekdays
+        case "Weekends":
+            self = .weekends
         case "Weekly":
             self = .weekly
         case "Every 3 days", "Custom":
@@ -379,6 +385,7 @@ struct ContentView: View {
     @AppStorage("sushiCompletedDayKeys") private var sushiCompletedDayKeys = ""
     @AppStorage("sushiCategoryCompletionCounts") private var sushiCategoryCompletionCounts = ""
     @AppStorage("sushiUnlockedAchievements") private var sushiUnlockedAchievements = ""
+    @AppStorage("sushiAskedHealthKit") private var hasAskedHealthKit = false
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
@@ -435,6 +442,7 @@ struct ContentView: View {
         .onAppear {
             loadTasks()
             resetMealIfNeeded()
+            requestHealthKitAuthorizationIfNeeded()
         }
         .fullScreenCover(isPresented: $showingAddTask) {
             AddTaskSheet(daypart: daypart) { task in
@@ -442,6 +450,7 @@ struct ContentView: View {
                     tasks.append(task)
                     saveTasks()
                 }
+                LocalNotificationScheduler.shared.scheduleReminder(for: task)
             }
         }
         .alert("What is the customer's name?", isPresented: $showingNamePrompt) {
@@ -509,6 +518,7 @@ struct ContentView: View {
             tasks[index].isEaten = true
             let completedAt = Date.now
             tasks[index].completedAt = completedAt
+            LocalNotificationScheduler.shared.cancelReminder(for: tasks[index])
             sushiEatenToday = min(sushiEatenToday + 1, mealLimit)
             recordAchievementProgress(for: tasks[index], completedAt: completedAt)
             recentlyEatenTaskIDs.insert(task.id)
@@ -592,6 +602,9 @@ struct ContentView: View {
         case .weekdays:
             let weekday = Calendar.current.component(.weekday, from: date)
             return (2...6).contains(weekday)
+        case .weekends:
+            let weekday = Calendar.current.component(.weekday, from: date)
+            return weekday == 1 || weekday == 7
         case .weekly:
             guard let completedAt = task.completedAt,
                   let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: completedAt), to: Calendar.current.startOfDay(for: date)).day else {
@@ -692,6 +705,145 @@ struct ContentView: View {
     private static func localDayKey(for date: Date) -> String {
         let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
         return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
+    }
+
+    private func requestHealthKitAuthorizationIfNeeded() {
+        guard !hasAskedHealthKit else { return }
+        hasAskedHealthKit = true
+        SushiHealthKitStore.shared.requestAuthorizationIfAvailable()
+    }
+}
+
+final class LocalNotificationScheduler: @unchecked Sendable {
+    static let shared = LocalNotificationScheduler()
+
+    private init() {}
+
+    func scheduleReminder(for task: SushiTask) {
+        guard task.hasReminder else { return }
+
+        Task {
+            guard await requestAuthorization() else { return }
+            cancelReminder(for: task)
+
+            let center = UNUserNotificationCenter.current()
+            for request in notificationRequests(for: task) {
+                do {
+                    try await center.add(request)
+                } catch {
+                    print("Unable to schedule ItadakiTask reminder: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    func cancelReminder(for task: SushiTask) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: reminderIdentifiers(for: task))
+    }
+
+    private func requestAuthorization() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+            return true
+        }
+
+        do {
+            return try await center.requestAuthorization(options: [.alert, .badge, .sound])
+        } catch {
+            return false
+        }
+    }
+
+    private func notificationRequests(for task: SushiTask) -> [UNNotificationRequest] {
+        let content = UNMutableNotificationContent()
+        content.title = "Chef has an order for you"
+        content.body = task.title
+        content.sound = .default
+
+        let calendar = Calendar.current
+        let hourMinute = calendar.dateComponents([.hour, .minute], from: task.dueDate)
+
+        switch task.recurrence {
+        case .none:
+            guard task.dueDate > .now else { return [] }
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: task.dueDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            return [UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "once"), content: content, trigger: trigger)]
+        case .daily:
+            let trigger = UNCalendarNotificationTrigger(dateMatching: hourMinute, repeats: true)
+            return [UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "daily"), content: content, trigger: trigger)]
+        case .weekdays:
+            return (2...6).map { weekday in
+                var components = hourMinute
+                components.weekday = weekday
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+                return UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "weekday-\(weekday)"), content: content, trigger: trigger)
+            }
+        case .weekends:
+            return [1, 7].map { weekday in
+                var components = hourMinute
+                components.weekday = weekday
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+                return UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "weekend-\(weekday)"), content: content, trigger: trigger)
+            }
+        case .weekly:
+            var components = hourMinute
+            components.weekday = calendar.component(.weekday, from: task.dueDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            return [UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "weekly"), content: content, trigger: trigger)]
+        case .custom:
+            let trigger = UNCalendarNotificationTrigger(dateMatching: hourMinute, repeats: true)
+            return [UNNotificationRequest(identifier: reminderIdentifier(for: task, suffix: "custom"), content: content, trigger: trigger)]
+        }
+    }
+
+    private func reminderIdentifiers(for task: SushiTask) -> [String] {
+        [
+            reminderIdentifier(for: task, suffix: "once"),
+            reminderIdentifier(for: task, suffix: "daily"),
+            reminderIdentifier(for: task, suffix: "weekday-2"),
+            reminderIdentifier(for: task, suffix: "weekday-3"),
+            reminderIdentifier(for: task, suffix: "weekday-4"),
+            reminderIdentifier(for: task, suffix: "weekday-5"),
+            reminderIdentifier(for: task, suffix: "weekday-6"),
+            reminderIdentifier(for: task, suffix: "weekend-1"),
+            reminderIdentifier(for: task, suffix: "weekend-7"),
+            reminderIdentifier(for: task, suffix: "weekly"),
+            reminderIdentifier(for: task, suffix: "custom")
+        ]
+    }
+
+    private func reminderIdentifier(for task: SushiTask, suffix: String) -> String {
+        "itadakitask.reminder.\(task.id.uuidString).\(suffix)"
+    }
+}
+
+final class SushiHealthKitStore: @unchecked Sendable {
+    static let shared = SushiHealthKitStore()
+
+    private let healthStore = HKHealthStore()
+
+    private init() {}
+
+    func requestAuthorizationIfAvailable() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+
+        let readTypes: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .stepCount),
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
+            HKObjectType.workoutType()
+        ].compactMap { $0 }.reduce(into: Set<HKObjectType>()) { result, type in
+            result.insert(type)
+        }
+
+        healthStore.requestAuthorization(toShare: [], read: readTypes) { success, error in
+            if let error {
+                print("HealthKit authorization failed: \(error.localizedDescription)")
+            } else if !success {
+                print("HealthKit authorization was not granted.")
+            }
+        }
     }
 }
 
@@ -934,8 +1086,16 @@ struct AddTaskSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
-    @State private var category: TaskCategory = .health
-    @State private var dueDate = Date()
+    @State private var dueDate: Date
+    @State private var repeatOption: AddTaskRepeatOption = .none
+    @State private var showingDatePicker = false
+    @State private var showingTimePicker = false
+
+    init(daypart: Daypart, addTask: @escaping (SushiTask) -> Void) {
+        self.daypart = daypart
+        self.addTask = addTask
+        _dueDate = State(initialValue: Self.defaultDueDate(for: daypart))
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -962,11 +1122,11 @@ struct AddTaskSheet: View {
                 )
 
                 ZStack(alignment: .leading) {
-                    Capsule()
+                    RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
                         .fill(Color.white.opacity(0.96))
 
                     if title.isEmpty {
-                        Text("What would you like to do?")
+                        Text(daypart == .night ? "e.g. Drink water, Read a book, Go for a walk..." : "What would you like to do?")
                             .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
                             .foregroundStyle(Color(red: 0.34, green: 0.50, blue: 0.74).opacity(0.78))
                             .padding(.horizontal, artworkFrame.width * 0.034)
@@ -979,15 +1139,50 @@ struct AddTaskSheet: View {
                         .textFieldStyle(.plain)
                         .padding(.horizontal, artworkFrame.width * 0.034)
                 }
-                .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.036)
+                .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.039)
                 .position(
                     x: artworkFrame.midX,
-                    y: artworkFrame.minY + artworkFrame.height * 0.507
+                    y: artworkFrame.minY + artworkFrame.height * 0.512
                 )
                 .accessibilityLabel("What would you like to do?")
+                .onChange(of: title) { _, newValue in
+                    if newValue.count > 60 {
+                        title = String(newValue.prefix(60))
+                    }
+                }
 
-                ForEach(Array(TaskCategory.allCases.enumerated()), id: \.element.id) { index, option in
-                    categoryButton(option: option, index: index, artworkFrame: artworkFrame)
+                Text("\(min(title.count, 60))/60")
+                    .font(.system(size: max(11, artworkFrame.width * 0.017), weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.38, green: 0.46, blue: 0.58).opacity(0.74))
+                    .position(
+                        x: artworkFrame.minX + artworkFrame.width * 0.875,
+                        y: artworkFrame.minY + artworkFrame.height * 0.532
+                    )
+
+                dateTimeButton(
+                    label: dateText,
+                    artworkFrame: artworkFrame,
+                    centerX: 0.267,
+                    centerY: 0.587,
+                    width: 0.44
+                ) {
+                    showingDatePicker = true
+                }
+                .accessibilityLabel("Choose task date")
+
+                dateTimeButton(
+                    label: timeText,
+                    artworkFrame: artworkFrame,
+                    centerX: 0.661,
+                    centerY: 0.587,
+                    width: 0.40
+                ) {
+                    showingTimePicker = true
+                }
+                .accessibilityLabel("Choose task time")
+
+                ForEach(AddTaskRepeatOption.allCases) { option in
+                    repeatButton(option: option, artworkFrame: artworkFrame)
                 }
 
                 Button {
@@ -1000,7 +1195,7 @@ struct AddTaskSheet: View {
                 .frame(width: artworkFrame.width * 0.36, height: artworkFrame.height * 0.05)
                 .position(
                     x: artworkFrame.midX,
-                    y: artworkFrame.minY + artworkFrame.height * 0.724
+                    y: artworkFrame.minY + artworkFrame.height * 0.702
                 )
                 .disabled(trimmedTitle.isEmpty)
             }
@@ -1009,6 +1204,20 @@ struct AddTaskSheet: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .sheet(isPresented: $showingDatePicker) {
+            pickerSheet(title: "Choose Date") {
+                DatePicker("Date", selection: $dueDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+            }
+        }
+        .sheet(isPresented: $showingTimePicker) {
+            pickerSheet(title: "Choose Time") {
+                DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+            }
+        }
     }
 
     private var trimmedTitle: String {
@@ -1017,7 +1226,15 @@ struct AddTaskSheet: View {
 
     private func submitTask() {
         guard !trimmedTitle.isEmpty else { return }
-        addTask(SushiTask(title: trimmedTitle, category: category, dueDate: dueDate))
+        addTask(
+            SushiTask(
+                title: String(trimmedTitle.prefix(60)),
+                category: .other,
+                dueDate: dueDate,
+                recurrence: repeatOption.recurrence,
+                hasReminder: true
+            )
+        )
         dismiss()
     }
 
@@ -1034,29 +1251,162 @@ struct AddTaskSheet: View {
         )
     }
 
-    private func categoryButton(option: TaskCategory, index: Int, artworkFrame: CGRect) -> some View {
-        let column = index % 7
-        let row = index / 7
-        let centerX = artworkFrame.minX + artworkFrame.width * (0.132 + CGFloat(column) * 0.126)
-        let centerY = artworkFrame.minY + artworkFrame.height * (row == 0 ? 0.586 : 0.651)
-        let tileWidth = artworkFrame.width * 0.11
-        let tileHeight = artworkFrame.height * 0.052
+    private var dateText: String {
+        if Calendar.current.isDateInToday(dueDate) {
+            return "Today, \(dueDate.formatted(.dateTime.month(.abbreviated).day().year()))"
+        }
+        if Calendar.current.isDateInTomorrow(dueDate) {
+            return "Tomorrow"
+        }
+        return dueDate.formatted(.dateTime.month(.abbreviated).day().year())
+    }
 
-        return Button {
-            category = option
+    private var timeText: String {
+        dueDate.formatted(.dateTime.hour().minute())
+    }
+
+    private func dateTimeButton(label: String, artworkFrame: CGRect, centerX: CGFloat, centerY: CGFloat, width: CGFloat, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: max(15, artworkFrame.width * 0.024), weight: .black, design: .rounded))
+                .foregroundStyle(Color(red: 0.00, green: 0.42, blue: 0.78))
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, artworkFrame.width * 0.10)
+                .frame(height: artworkFrame.height * 0.058)
+                .background(Color.white.opacity(0.001))
+        }
+        .buttonStyle(.plain)
+        .frame(width: artworkFrame.width * width, height: artworkFrame.height * 0.058)
+        .position(
+            x: artworkFrame.minX + artworkFrame.width * centerX,
+            y: artworkFrame.minY + artworkFrame.height * centerY
+        )
+    }
+
+    private func repeatButton(option: AddTaskRepeatOption, artworkFrame: CGRect) -> some View {
+        Button {
+            repeatOption = option
+            if option == .tomorrow {
+                dueDate = Self.tomorrowDate(preservingTimeFrom: dueDate)
+            }
         } label: {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
                 .fill(Color.white.opacity(0.001))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(category == option ? Color(red: 1.0, green: 0.24, blue: 0.57) : .clear, lineWidth: 3)
-                        .shadow(color: Color(red: 1.0, green: 0.24, blue: 0.57).opacity(category == option ? 0.45 : 0), radius: 5)
+                    RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
+                        .stroke(repeatOption == option ? Color(red: 1.0, green: 0.22, blue: 0.50) : .clear, lineWidth: 3)
                 )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(option.rawValue)
-        .frame(width: tileWidth, height: tileHeight)
-        .position(x: centerX, y: centerY)
+        .accessibilityLabel(option.accessibilityLabel)
+        .frame(width: artworkFrame.width * option.width, height: artworkFrame.height * 0.047)
+        .position(
+            x: artworkFrame.minX + artworkFrame.width * option.centerX,
+            y: artworkFrame.minY + artworkFrame.height * 0.653
+        )
+    }
+
+    private func pickerSheet<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            VStack {
+                content()
+                    .padding()
+                Spacer(minLength: 0)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        showingDatePicker = false
+                        showingTimePicker = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private static func defaultDueDate(for daypart: Daypart) -> Date {
+        let calendar = Calendar.current
+        let hour: Int
+        switch daypart {
+        case .morning:
+            hour = 8
+        case .noon:
+            hour = 12
+        case .night:
+            hour = 20
+        }
+
+        return calendar.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+    }
+
+    private static func tomorrowDate(preservingTimeFrom date: Date) -> Date {
+        let calendar = Calendar.current
+        let time = calendar.dateComponents([.hour, .minute, .second], from: date)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? date
+        return calendar.date(
+            bySettingHour: time.hour ?? 8,
+            minute: time.minute ?? 0,
+            second: time.second ?? 0,
+            of: tomorrow
+        ) ?? tomorrow
+    }
+}
+
+enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
+    case none
+    case daily
+    case weekdays
+    case weekends
+    case tomorrow
+
+    var id: String { rawValue }
+
+    var recurrence: TaskRecurrence {
+        switch self {
+        case .none, .tomorrow:
+            return .none
+        case .daily:
+            return .daily
+        case .weekdays:
+            return .weekdays
+        case .weekends:
+            return .weekends
+        }
+    }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .none: "Repeat none"
+        case .daily: "Repeat daily"
+        case .weekdays: "Repeat weekdays"
+        case .weekends: "Repeat weekends"
+        case .tomorrow: "Schedule tomorrow"
+        }
+    }
+
+    var centerX: CGFloat {
+        switch self {
+        case .none: 0.151
+        case .daily: 0.305
+        case .weekdays: 0.482
+        case .weekends: 0.660
+        case .tomorrow: 0.827
+        }
+    }
+
+    var width: CGFloat {
+        switch self {
+        case .none: 0.145
+        case .daily: 0.145
+        case .weekdays: 0.175
+        case .weekends: 0.175
+        case .tomorrow: 0.17
+        }
     }
 }
 
