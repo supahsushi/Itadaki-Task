@@ -426,6 +426,11 @@ struct ContentView: View {
             ZStack {
                 ArtworkBackground(name: backgroundAsset, artworkSize: backgroundArtworkSize)
 
+                ProfileStreakLevelOverlay(
+                    levelInfo: streakLevelInfo,
+                    artworkFrame: artworkFrame
+                )
+
                 if !mealIsFull {
                     Button {
                         showingAddTask = true
@@ -513,6 +518,10 @@ struct ContentView: View {
         sushiEatenToday >= mealLimit
     }
 
+    private var streakLevelInfo: StreakLevelInfo {
+        StreakLevelInfo(streakDays: sushiCurrentStreak)
+    }
+
     private func fittedArtworkFrame(container: CGSize, artwork: CGSize) -> CGRect {
         let scale = max(container.width / artwork.width, container.height / artwork.height)
         let width = artwork.width * scale
@@ -576,6 +585,7 @@ struct ContentView: View {
         if tasks.count != countBeforePruning {
             saveTasks()
         }
+        refreshCurrentStreakForToday()
         guard sushiMealDayKey != today else { return }
         sushiMealDayKey = today
         sushiEatenToday = 0
@@ -687,6 +697,20 @@ struct ContentView: View {
         }
 
         return streak
+    }
+
+    private func refreshCurrentStreakForToday() {
+        let completedDayKeys = decodedStringSet(sushiCompletedDayKeys)
+        let today = Calendar.current.startOfDay(for: .now)
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
+
+        if completedDayKeys.contains(Self.localDayKey(for: today)) {
+            sushiCurrentStreak = currentStreak(from: completedDayKeys, endingAt: today)
+        } else if completedDayKeys.contains(Self.localDayKey(for: yesterday)) {
+            sushiCurrentStreak = currentStreak(from: completedDayKeys, endingAt: yesterday)
+        } else {
+            sushiCurrentStreak = 0
+        }
     }
 
     private func decodedCategoryCompletionCounts() -> [String: Int] {
@@ -898,6 +922,85 @@ struct CustomerNameText: View {
             .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
+    }
+}
+
+struct StreakLevelInfo {
+    private static let milestones = [0, 1, 3, 7, 14, 30, 60, 100]
+
+    var streakDays: Int
+
+    var level: Int {
+        Self.milestones.lastIndex(where: { streakDays >= $0 }) ?? 0
+    }
+
+    var progress: Double {
+        guard level < Self.milestones.count - 1 else { return 1 }
+        let currentMilestone = Self.milestones[level]
+        let nextMilestone = Self.milestones[level + 1]
+        let span = max(1, nextMilestone - currentMilestone)
+        let completed = max(0, streakDays - currentMilestone)
+        return min(1, max(0, Double(completed) / Double(span)))
+    }
+}
+
+struct ProfileStreakLevelOverlay: View {
+    var levelInfo: StreakLevelInfo
+    var artworkFrame: CGRect
+
+    var body: some View {
+        ZStack {
+            Text("Lv. \(levelInfo.level)")
+                .font(.system(size: max(11, artworkFrame.width * 0.019), weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.65), radius: 2, y: 1)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .frame(width: artworkFrame.width * 0.10, alignment: .leading)
+                .background(
+                    Capsule()
+                        .fill(Color(red: 0.28, green: 0.15, blue: 0.10).opacity(0.58))
+                        .padding(.horizontal, -4)
+                        .padding(.vertical, -2)
+                )
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.172,
+                    y: artworkFrame.minY + artworkFrame.height * 0.082
+                )
+
+            ProfileLevelMeter(progress: levelInfo.progress)
+                .frame(width: artworkFrame.width * 0.105, height: artworkFrame.height * 0.009)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.210,
+                    y: artworkFrame.minY + artworkFrame.height * 0.101
+                )
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+struct ProfileLevelMeter: View {
+    var progress: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            let fillWidth = max(0, proxy.size.width * progress)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.72))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.black.opacity(0.22), lineWidth: 1)
+                    )
+
+                Capsule()
+                    .fill(Color(red: 0.67, green: 1.0, blue: 0.52))
+                    .frame(width: fillWidth)
+                    .shadow(color: Color(red: 0.67, green: 1.0, blue: 0.52).opacity(0.7), radius: 3)
+            }
+        }
+        .clipShape(Capsule())
     }
 }
 
