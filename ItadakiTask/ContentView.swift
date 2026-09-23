@@ -459,7 +459,7 @@ struct ContentView: View {
                     )
 
                     TaskBoardView(
-                        tasks: todaysTasks,
+                        tasks: activeTasks,
                         daypart: daypart,
                         mealIsFull: mealIsFull,
                         recentlyEatenTaskIDs: recentlyEatenTaskIDs
@@ -963,16 +963,24 @@ struct ProfileStreakLevelOverlay: View {
 
     var body: some View {
         ZStack {
+            RoundedRectangle(cornerRadius: artworkFrame.width * 0.010)
+                .fill(Color(red: 0.25, green: 0.13, blue: 0.07).opacity(0.92))
+                .frame(width: artworkFrame.width * 0.105, height: artworkFrame.height * 0.020)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.180,
+                    y: artworkFrame.minY + artworkFrame.height * 0.079
+                )
+
             Text("Lv. \(levelInfo.level)")
-                .font(.system(size: max(11, artworkFrame.width * 0.019), weight: .black, design: .rounded))
+                .font(.system(size: max(10, artworkFrame.width * 0.017), weight: .black, design: .rounded))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.65), radius: 2, y: 1)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
                 .frame(width: artworkFrame.width * 0.10, alignment: .leading)
                 .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.172,
-                    y: artworkFrame.minY + artworkFrame.height * 0.082
+                    x: artworkFrame.minX + artworkFrame.width * 0.180,
+                    y: artworkFrame.minY + artworkFrame.height * 0.079
                 )
 
             ProfileLevelMeter(progress: levelInfo.progress)
@@ -1024,25 +1032,34 @@ struct MealCountOverlay: View {
     var artworkFrame: CGRect
 
     var body: some View {
-        Text("\(eatenCount) / \(maxCount)")
-            .font(.system(size: max(20, artworkFrame.width * 0.037), weight: .black, design: .rounded))
-            .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.70), radius: 2, y: 1)
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
+        ZStack {
+            RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
+                .fill(Color(red: 0.25, green: 0.12, blue: 0.07).opacity(0.94))
+                .frame(width: artworkFrame.width * 0.205, height: artworkFrame.height * 0.058)
+
+            VStack(spacing: 1) {
+                Text("\(eatenCount) / \(maxCount)")
+                    .font(.system(size: max(18, artworkFrame.width * 0.033), weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.70), radius: 2, y: 1)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text("sushi eaten today")
+                    .font(.system(size: max(8, artworkFrame.width * 0.013), weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.86))
+                    .shadow(color: .black.opacity(0.60), radius: 1, y: 1)
+                    .lineLimit(1)
+            }
             .multilineTextAlignment(.center)
-            .frame(width: artworkFrame.width * 0.18, height: artworkFrame.height * 0.035)
-            .background(
-                RoundedRectangle(cornerRadius: artworkFrame.width * 0.016)
-                    .fill(Color(red: 0.25, green: 0.12, blue: 0.07).opacity(0.82))
-                    .blur(radius: 0.2)
-            )
-            .position(
-                x: artworkFrame.minX + artworkFrame.width * 0.835,
-                y: artworkFrame.minY + artworkFrame.height * 0.067
-            )
-            .allowsHitTesting(false)
-            .accessibilityLabel("\(eatenCount) of \(maxCount) sushi eaten today")
+            .frame(width: artworkFrame.width * 0.185)
+        }
+        .position(
+            x: artworkFrame.minX + artworkFrame.width * 0.835,
+            y: artworkFrame.minY + artworkFrame.height * 0.075
+        )
+        .allowsHitTesting(false)
+        .accessibilityLabel("\(eatenCount) of \(maxCount) sushi eaten today")
     }
 }
 
