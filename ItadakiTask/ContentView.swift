@@ -152,6 +152,43 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum AchievementMetric: Equatable {
+    case totalTasks
+    case bestDailyTasks
+    case currentStreak
+    case categories(Set<TaskCategory>)
+}
+
+struct AchievementDefinition: Identifiable, Equatable {
+    var id: String
+    var emoji: String
+    var title: String
+    var requirement: String
+    var target: Int
+    var metric: AchievementMetric
+
+    static let all: [AchievementDefinition] = [
+        AchievementDefinition(id: "first-bite", emoji: "🍣", title: "First Bite", requirement: "Complete your first task", target: 1, metric: .totalTasks),
+        AchievementDefinition(id: "full-plate", emoji: "🍱", title: "Full Plate", requirement: "Complete 5 tasks in one day", target: 5, metric: .bestDailyTasks),
+        AchievementDefinition(id: "chefs-special", emoji: "👨‍🍳", title: "Chef's Special", requirement: "Complete 10 tasks in one day", target: 10, metric: .bestDailyTasks),
+        AchievementDefinition(id: "three-day-streak", emoji: "🔥", title: "3-Day Streak", requirement: "Complete at least one task for 3 days", target: 3, metric: .currentStreak),
+        AchievementDefinition(id: "seven-day-streak", emoji: "🔥", title: "7-Day Streak", requirement: "Complete at least one task for 7 days", target: 7, metric: .currentStreak),
+        AchievementDefinition(id: "fourteen-day-streak", emoji: "🌸", title: "14-Day Streak", requirement: "Complete at least one task for 14 days", target: 14, metric: .currentStreak),
+        AchievementDefinition(id: "thirty-day-streak", emoji: "🏮", title: "30-Day Streak", requirement: "Complete at least one task for 30 days", target: 30, metric: .currentStreak),
+        AchievementDefinition(id: "sixty-day-streak", emoji: "🌊", title: "60-Day Streak", requirement: "Complete at least one task for 60 days", target: 60, metric: .currentStreak),
+        AchievementDefinition(id: "hundred-day-streak", emoji: "👑", title: "100-Day Streak", requirement: "Complete at least one task for 100 days", target: 100, metric: .currentStreak),
+        AchievementDefinition(id: "sushi-regular", emoji: "🍣", title: "Sushi Regular", requirement: "Complete 25 total tasks", target: 25, metric: .totalTasks),
+        AchievementDefinition(id: "sushi-lover", emoji: "🍣", title: "Sushi Lover", requirement: "Complete 100 total tasks", target: 100, metric: .totalTasks),
+        AchievementDefinition(id: "omakase-master", emoji: "🍣", title: "Omakase Master", requirement: "Complete 500 total tasks", target: 500, metric: .totalTasks),
+        AchievementDefinition(id: "healthy-bite", emoji: "💧", title: "Healthy Bite", requirement: "Complete 10 Health tasks", target: 10, metric: .categories([.health])),
+        AchievementDefinition(id: "active-sushi", emoji: "🎾", title: "Active Sushi", requirement: "Complete 10 Exercise or Sports tasks", target: 10, metric: .categories([.exercise, .sports])),
+        AchievementDefinition(id: "on-the-grind", emoji: "💻", title: "On the Grind", requirement: "Complete 10 Work tasks", target: 10, metric: .categories([.work])),
+        AchievementDefinition(id: "brain-food", emoji: "📚", title: "Brain Food", requirement: "Complete 10 Learning tasks", target: 10, metric: .categories([.learning])),
+        AchievementDefinition(id: "take-care", emoji: "🧘", title: "Take Care", requirement: "Complete 10 Wellness or Self-care tasks", target: 10, metric: .categories([.wellness, .selfCare])),
+        AchievementDefinition(id: "good-company", emoji: "💕", title: "Good Company", requirement: "Complete 10 Social or Relationship tasks", target: 10, metric: .categories([.social, .relationships]))
+    ]
+}
+
 struct CollectionCharacterProfile: Identifiable, Equatable {
     var id: String
     var name: String
@@ -336,6 +373,12 @@ struct ContentView: View {
     @AppStorage("sushiTasks") private var storedTasks = ""
     @AppStorage("sushiEatenToday") private var sushiEatenToday = 0
     @AppStorage("sushiMealDayKey") private var sushiMealDayKey = ""
+    @AppStorage("sushiTotalCompletions") private var sushiTotalCompletions = 0
+    @AppStorage("sushiBestDailyCompletions") private var sushiBestDailyCompletions = 0
+    @AppStorage("sushiCurrentStreak") private var sushiCurrentStreak = 0
+    @AppStorage("sushiCompletedDayKeys") private var sushiCompletedDayKeys = ""
+    @AppStorage("sushiCategoryCompletionCounts") private var sushiCategoryCompletionCounts = ""
+    @AppStorage("sushiUnlockedAchievements") private var sushiUnlockedAchievements = ""
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
@@ -464,8 +507,10 @@ struct ContentView: View {
 
         withAnimation(.spring(response: 0.48, dampingFraction: 0.72)) {
             tasks[index].isEaten = true
-            tasks[index].completedAt = .now
+            let completedAt = Date.now
+            tasks[index].completedAt = completedAt
             sushiEatenToday = min(sushiEatenToday + 1, mealLimit)
+            recordAchievementProgress(for: tasks[index], completedAt: completedAt)
             recentlyEatenTaskIDs.insert(task.id)
             saveTasks()
         }
@@ -560,6 +605,82 @@ struct ContentView: View {
             }
             return days >= 3
         }
+    }
+
+    private func recordAchievementProgress(for task: SushiTask, completedAt: Date) {
+        sushiTotalCompletions += 1
+        sushiBestDailyCompletions = max(sushiBestDailyCompletions, sushiEatenToday)
+
+        var categoryCounts = decodedCategoryCompletionCounts()
+        categoryCounts[task.category.rawValue, default: 0] += 1
+        sushiCategoryCompletionCounts = Self.encoded(categoryCounts)
+
+        var completedDayKeys = decodedStringSet(sushiCompletedDayKeys)
+        completedDayKeys.insert(Self.localDayKey(for: completedAt))
+        sushiCompletedDayKeys = Self.encoded(completedDayKeys)
+        sushiCurrentStreak = currentStreak(from: completedDayKeys, endingAt: completedAt)
+
+        refreshUnlockedAchievements(categoryCounts: categoryCounts)
+    }
+
+    private func refreshUnlockedAchievements(categoryCounts: [String: Int]) {
+        var unlocked = decodedStringSet(sushiUnlockedAchievements)
+        for achievement in AchievementDefinition.all where achievementValue(for: achievement, categoryCounts: categoryCounts) >= achievement.target {
+            unlocked.insert(achievement.id)
+        }
+        sushiUnlockedAchievements = Self.encoded(unlocked)
+    }
+
+    private func achievementValue(for achievement: AchievementDefinition, categoryCounts: [String: Int]) -> Int {
+        switch achievement.metric {
+        case .totalTasks:
+            return sushiTotalCompletions
+        case .bestDailyTasks:
+            return sushiBestDailyCompletions
+        case .currentStreak:
+            return sushiCurrentStreak
+        case .categories(let categories):
+            return categories.reduce(0) { total, category in
+                total + (categoryCounts[category.rawValue] ?? 0)
+            }
+        }
+    }
+
+    private func currentStreak(from completedDayKeys: Set<String>, endingAt date: Date) -> Int {
+        var streak = 0
+        var cursor = Calendar.current.startOfDay(for: date)
+
+        while completedDayKeys.contains(Self.localDayKey(for: cursor)) {
+            streak += 1
+            guard let previousDay = Calendar.current.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previousDay
+        }
+
+        return streak
+    }
+
+    private func decodedCategoryCompletionCounts() -> [String: Int] {
+        guard let data = sushiCategoryCompletionCounts.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private func decodedStringSet(_ value: String) -> Set<String> {
+        guard let data = value.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(Set<String>.self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    private static func encoded<T: Encodable>(_ value: T) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return ""
+        }
+        return encoded
     }
 
     private func saveTasks() {
