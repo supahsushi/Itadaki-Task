@@ -216,77 +216,10 @@ struct ContentView: View {
     private let daypart = Daypart()
 
     var body: some View {
-        GeometryReader { proxy in
-            let artworkFrame = fittedArtworkFrame(
-                container: proxy.size,
-                artwork: daypart.chefArtworkSize
-            )
-            let rowArea = CGRect(
-                x: artworkFrame.minX + artworkFrame.width * 0.075,
-                y: artworkFrame.minY + artworkFrame.height * 0.492,
-                width: artworkFrame.width * 0.714,
-                height: artworkFrame.height * 0.203
-            )
-
-            ZStack {
-                ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
-
-                Button {
-                    draftName = customerName
-                    showingNamePrompt = true
-                } label: {
-                    CustomerNameText(name: displayName)
-                }
-                .buttonStyle(.plain)
-                .frame(width: artworkFrame.width * 0.16, alignment: .leading)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.16,
-                    y: artworkFrame.minY + artworkFrame.height * 0.066
-                )
-
-                MealCountText(eatenCount: sushiEatenToday, maxCount: mealLimit)
-                    .frame(width: artworkFrame.width * 0.16, alignment: .center)
-                    .position(
-                        x: artworkFrame.minX + artworkFrame.width * 0.855,
-                        y: artworkFrame.minY + artworkFrame.height * 0.066
-                    )
-
-                Button {
-                    showingAddTask = true
-                } label: {
-                    Color.black.opacity(0.001)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add a Task")
-                .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.713,
-                    y: artworkFrame.minY + artworkFrame.height * 0.458
-                )
-
-                TaskBoardView(
-                    tasks: todaysTasks,
-                    daypart: daypart,
-                    mealIsFull: mealIsFull,
-                    recentlyEatenTaskIDs: recentlyEatenTaskIDs
-                ) { task in
-                    complete(task)
-                }
-                .frame(width: rowArea.width, height: rowArea.height)
-                .position(x: rowArea.midX, y: rowArea.midY)
-
-                ArtworkNavigationHitZones(frame: artworkFrame)
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .clipped()
-        }
+        ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
         .onAppear {
             loadTasks()
             resetMealIfNeeded()
-            if !hasAskedCustomerName {
-                draftName = customerName
-                showingNamePrompt = true
-            }
         }
         .sheet(isPresented: $showingAddTask) {
             AddTaskSheet(daypart: daypart) { task in
