@@ -152,6 +152,136 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+struct CollectionCharacterProfile: Identifiable, Equatable {
+    var id: String
+    var name: String
+    var role: String
+    var assetName: String
+    var portfolioImagePath: String
+    var unlockAfterSushiEaten: Int
+    var profile: String
+
+    static let sushiSeries: [CollectionCharacterProfile] = [
+        CollectionCharacterProfile(
+            id: "tuna-the-gamer",
+            name: "Tuna the Gamer",
+            role: "Gamer",
+            assetName: "TunaTheGamer",
+            portfolioImagePath: "images/tuna-the-gamer.png",
+            unlockAfterSushiEaten: 1,
+            profile: "The first character card in the sushi cast, always mid level-up with a headset, controller, boba, and a neon gaming setup."
+        ),
+        CollectionCharacterProfile(
+            id: "salmon-the-food-tester",
+            name: "Salmon the Food Tester",
+            role: "Food Tester",
+            assetName: "SalmonTheFoodTester",
+            portfolioImagePath: "images/salmon-the-food-tester.png",
+            unlockAfterSushiEaten: 3,
+            profile: "The resident taste checker who takes freshness, flavor, presentation, and happiness seriously before anyone else gets a bite."
+        ),
+        CollectionCharacterProfile(
+            id: "tamago-the-chill-one",
+            name: "Tamago the Chill One",
+            role: "Chill One",
+            assetName: "TamagoTheChillOne",
+            portfolioImagePath: "images/tamago-the-chill-one.png",
+            unlockAfterSushiEaten: 5,
+            profile: "A snack-loving comfort character built around good food, good mood, good vibes, and absolutely zero urgent plans."
+        ),
+        CollectionCharacterProfile(
+            id: "uni-the-fancy-foodie",
+            name: "Uni the Fancy Foodie",
+            role: "Fancy Foodie",
+            assetName: "UniTheFancyFoodie",
+            portfolioImagePath: "images/uni-the-fancy-foodie.png",
+            unlockAfterSushiEaten: 8,
+            profile: "The luxury foodie of the group, complete with crown, pearls, and refined taste for the best meal at the table."
+        ),
+        CollectionCharacterProfile(
+            id: "unagi-the-surfer",
+            name: "Unagi the Surfer",
+            role: "Surfer",
+            assetName: "UnagiTheSurfer",
+            portfolioImagePath: "images/unagi-the-surfer.png",
+            unlockAfterSushiEaten: 10,
+            profile: "The laid-back wave chaser of the cast, all sunglasses, shaka signs, and good vibes big waves sushi days."
+        ),
+        CollectionCharacterProfile(
+            id: "mackerel-the-photographer",
+            name: "Mackerel the Photographer",
+            role: "Photographer",
+            assetName: "MackerelThePhotographer",
+            portfolioImagePath: "images/mackerel-the-photographer.png",
+            unlockAfterSushiEaten: 15,
+            profile: "A travel-log character with camera ready, always chasing the perfect shot through cherry blossoms and Mt. Fuji views."
+        ),
+        CollectionCharacterProfile(
+            id: "squid-the-dj",
+            name: "Squid the DJ",
+            role: "DJ",
+            assetName: "SquidTheDJ",
+            portfolioImagePath: "images/squid-the-dj.png",
+            unlockAfterSushiEaten: 20,
+            profile: "A glossy neon DJ who shifts color and energy to match the beat, bringing the sushi world into music mode."
+        ),
+        CollectionCharacterProfile(
+            id: "yellowtail-the-traveler",
+            name: "Yellowtail the Traveler",
+            role: "Traveler",
+            assetName: "YellowtailTheTraveler",
+            portfolioImagePath: "images/yellowtail-the-traveler.png",
+            unlockAfterSushiEaten: 25,
+            profile: "The map-and-passport explorer who finds hidden sushi spots, new places, and memories worth keeping."
+        ),
+        CollectionCharacterProfile(
+            id: "scallop-the-fisherman",
+            name: "Scallop the Fisherman",
+            role: "Fisherman",
+            assetName: "ScallopTheFisherman",
+            portfolioImagePath: "images/scallop-the-fisherman.png",
+            unlockAfterSushiEaten: 30,
+            profile: "A bonus cast member out on the water with binoculars and nets, bringing patience, passion, and the perfect catch."
+        ),
+        CollectionCharacterProfile(
+            id: "mama-roe-the-shopper",
+            name: "Mama Roe the Shopper",
+            role: "Shopper",
+            assetName: "MamaRoeTheShopper",
+            portfolioImagePath: "images/mama-roe-the-shopper.png",
+            unlockAfterSushiEaten: 35,
+            profile: "A caretaker character with a cart full of fresh produce and sushi snacks, feeding happy little roes with love."
+        ),
+        CollectionCharacterProfile(
+            id: "red-snapper-the-taiko-master",
+            name: "Red Snapper the Taiko Master",
+            role: "Taiko Master",
+            assetName: "RedSnapperTaikoMaster",
+            portfolioImagePath: "images/red-snapper-taiko-master.png",
+            unlockAfterSushiEaten: 40,
+            profile: "A festival-energy character whose drumbeat brings joy, rhythm, and connection to the whole cast."
+        ),
+        CollectionCharacterProfile(
+            id: "sushiroll-the-librarian",
+            name: "SushiRoll the Librarian",
+            role: "Librarian",
+            assetName: "SushiRollTheLibrarian",
+            portfolioImagePath: "images/sushiroll-the-librarian.png",
+            unlockAfterSushiEaten: 45,
+            profile: "The quiet keeper of the sushi archive, carrying books and wisdom from a cozy library corner."
+        ),
+        CollectionCharacterProfile(
+            id: "lobster-crab-the-sumo-bros",
+            name: "Lobster & Crab: The Sumo Bros",
+            role: "Sumo Bros",
+            assetName: "LobsterCrabSumoBros",
+            portfolioImagePath: "images/lobster-crab-sumo-bros.png",
+            unlockAfterSushiEaten: 50,
+            profile: "A dramatic duo card: two shellfish brothers settling eternal bragging rights in the sumo ring."
+        )
+    ]
+}
+
 enum Daypart {
     case morning
     case noon
