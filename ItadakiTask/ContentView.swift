@@ -216,49 +216,55 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let spacing = max(8, min(14, proxy.size.height * 0.012))
-            let chefHeight = max(250, min(330, proxy.size.height * 0.32))
+            let isCompactHeight = proxy.size.height < 880
+            let horizontalPadding = max(12, min(16, proxy.size.width * 0.04))
+            let topPadding = max(8, proxy.safeAreaInsets.top + 6)
+            let bottomPadding = max(6, proxy.safeAreaInsets.bottom + 6)
+            let spacing = max(7, min(12, proxy.size.height * 0.011))
+            let chefHeight = max(190, min(isCompactHeight ? 250 : 310, proxy.size.height * (isCompactHeight ? 0.26 : 0.29)))
 
             ZStack {
                 SceneBackground(daypart: daypart)
 
                 VStack(spacing: spacing) {
-                        HeaderView(
-                            customerName: displayName,
-                            eatenCount: sushiEatenToday,
-                            maxCount: mealLimit,
-                            daypart: daypart
-                        ) {
-                            draftName = customerName
-                            showingNamePrompt = true
-                        }
-
-                        ChefStageView(
-                            daypart: daypart,
-                            nextTask: nextTask,
-                            activeCount: activeTasks.count,
-                            mealIsFull: mealIsFull,
-                            height: chefHeight
-                        )
-
-                        TaskBoardView(
-                            tasks: todaysTasks,
-                            daypart: daypart,
-                            mealIsFull: mealIsFull,
-                            recentlyEatenTaskIDs: recentlyEatenTaskIDs
-                        ) { task in
-                            complete(task)
-                        }
-                        .frame(maxHeight: .infinity)
-
-                        BottomBar(daypart: daypart) {
-                            showingAddTask = true
-                        }
+                    HeaderView(
+                        customerName: displayName,
+                        eatenCount: sushiEatenToday,
+                        maxCount: mealLimit,
+                        daypart: daypart
+                    ) {
+                        draftName = customerName
+                        showingNamePrompt = true
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, max(10, proxy.safeAreaInsets.top * 0.25))
-                    .padding(.bottom, max(4, proxy.safeAreaInsets.bottom * 0.15))
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+
+                    ChefStageView(
+                        daypart: daypart,
+                        nextTask: nextTask,
+                        activeCount: activeTasks.count,
+                        mealIsFull: mealIsFull,
+                        height: chefHeight
+                    )
+
+                    TaskBoardView(
+                        tasks: todaysTasks,
+                        daypart: daypart,
+                        mealIsFull: mealIsFull,
+                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                    ) { task in
+                        complete(task)
+                    }
+                    .frame(maxHeight: .infinity)
+                    .layoutPriority(1)
+
+                    BottomBar(daypart: daypart) {
+                        showingAddTask = true
+                    }
+                }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, topPadding)
+                .padding(.bottom, bottomPadding)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
             }
         }
         .onAppear {
@@ -422,26 +428,33 @@ struct SceneBackground: View {
     var daypart: Daypart
 
     var body: some View {
-        ZStack {
-            AssetImage(name: daypart.orderAsset)
-                .scaledToFill()
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            ZStack {
+                AssetImage(name: daypart.orderAsset)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
+                    .saturation(0.92)
+                    .blur(radius: 2)
 
-            LinearGradient(
-                colors: [
-                    .black.opacity(0.12),
-                    .black.opacity(0.04),
-                    .black.opacity(0.46)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                LinearGradient(
+                    colors: [
+                        .black.opacity(0.18),
+                        .black.opacity(0.05),
+                        .black.opacity(0.52)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Rectangle()
+                    .fill(.ultraThinMaterial.opacity(0.2))
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
             .ignoresSafeArea()
-
-            Rectangle()
-                .fill(.ultraThinMaterial.opacity(0.24))
-                .ignoresSafeArea()
         }
+        .ignoresSafeArea()
     }
 }
 
@@ -517,8 +530,9 @@ struct ChefStageView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             AssetImage(name: daypart.chefAsset)
-                .scaledToFill()
+                .aspectRatio(contentMode: .fill)
                 .frame(height: height)
+                .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 26))
                 .overlay(
                     LinearGradient(
@@ -943,11 +957,19 @@ struct AddTaskSheet: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let isCompactHeight = proxy.size.height < 880
+            let topPadding = max(12, proxy.safeAreaInsets.top + 4)
+            let bottomPadding = max(14, proxy.safeAreaInsets.bottom + 8)
+            let boardMaxHeight = proxy.size.height - topPadding - bottomPadding - 42
+
             ZStack {
                 AssetImage(name: daypart.orderAsset)
-                    .scaledToFill()
-                    .ignoresSafeArea()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
                     .opacity(0.72)
+                    .blur(radius: 1.5)
+                    .ignoresSafeArea()
 
                 LinearGradient(
                     colors: [.black.opacity(0.03), .black.opacity(0.08), .black.opacity(0.34)],
@@ -972,36 +994,38 @@ struct AddTaskSheet: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, max(12, proxy.safeAreaInsets.top + 4))
+                    .padding(.top, topPadding)
 
                     Spacer(minLength: 0)
 
-                    orderBoard
-                        .frame(maxHeight: min(620, proxy.size.height * 0.72))
+                    orderBoard(compact: isCompactHeight)
+                        .frame(maxHeight: boardMaxHeight)
                         .padding(.horizontal, 18)
-                        .padding(.bottom, max(18, proxy.safeAreaInsets.bottom + 10))
+                        .padding(.bottom, bottomPadding)
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
             }
         }
     }
 
-    private var orderBoard: some View {
-        VStack(spacing: 9) {
+    private func orderBoard(compact: Bool) -> some View {
+        VStack(spacing: compact ? 7 : 9) {
             VStack(spacing: 2) {
                 Text("Add a Task")
-                    .font(.system(size: 27, weight: .black, design: .rounded))
+                    .font(.system(size: compact ? 24 : 27, weight: .black, design: .rounded))
                     .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
                 Text("Tell Chef what you want to do!")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: compact ? 12 : 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(red: 0.36, green: 0.24, blue: 0.18))
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 TextField("What would you like to do?", text: $title)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: compact ? 15 : 16, weight: .bold, design: .rounded))
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 14)
-                    .frame(height: 42)
+                    .frame(height: compact ? 38 : 42)
                     .background(.white, in: Capsule())
                     .overlay(
                         Capsule()
@@ -1015,21 +1039,21 @@ struct AddTaskSheet: View {
                     .minimumScaleFactor(0.72)
             }
 
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: compact ? 5 : 7) {
                 Text("Choose a category (optional)")
-                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .font(.system(size: compact ? 13 : 14, weight: .black, design: .rounded))
                     .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
 
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 4), spacing: 7) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: compact ? 6 : 7) {
                     ForEach(TaskCategory.allCases) { option in
-                        CategoryTile(option: option, isSelected: category == option) {
+                        CategoryTile(option: option, isSelected: category == option, compact: compact) {
                             category = option
                         }
                     }
                 }
             }
 
-            VStack(spacing: 7) {
+            VStack(spacing: compact ? 5 : 7) {
                 Toggle(isOn: $hasReminder) {
                     Label("Reminder optional", systemImage: "bell.badge")
                 }
@@ -1045,14 +1069,30 @@ struct AddTaskSheet: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                Picker("Repeat", selection: $recurrence) {
-                    ForEach(TaskRecurrence.allCases) { option in
-                        Text(option.rawValue).tag(option)
+                Menu {
+                    Picker("Repeat", selection: $recurrence) {
+                        ForEach(TaskRecurrence.allCases) { option in
+                            Label(option.rawValue, systemImage: option.systemImage)
+                                .tag(option)
+                        }
                     }
+                } label: {
+                    HStack {
+                        Label("Repeat", systemImage: "repeat")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                        Spacer()
+                        Text(recurrence.rawValue)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .black))
+                    }
+                    .foregroundStyle(Color(red: 0.20, green: 0.12, blue: 0.08))
+                    .padding(.horizontal, 11)
+                    .frame(height: compact ? 34 : 38)
+                    .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 12))
                 }
-                .pickerStyle(.segmented)
             }
-            .padding(10)
+            .padding(compact ? 8 : 10)
             .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 16))
 
             Button {
@@ -1062,9 +1102,9 @@ struct AddTaskSheet: View {
                 dismiss()
             } label: {
                 Text("Add Task")
-                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .font(.system(size: compact ? 18 : 20, weight: .black, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+                    .frame(height: compact ? 45 : 50)
                     .foregroundStyle(.white)
                     .background(
                         LinearGradient(
@@ -1083,9 +1123,9 @@ struct AddTaskSheet: View {
             .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 14)
-        .padding(.bottom, 16)
+        .padding(.horizontal, compact ? 14 : 18)
+        .padding(.top, compact ? 11 : 14)
+        .padding(.bottom, compact ? 12 : 16)
         .background(
             LinearGradient(
                 colors: [
@@ -1108,20 +1148,21 @@ struct AddTaskSheet: View {
 struct CategoryTile: View {
     var option: TaskCategory
     var isSelected: Bool
+    var compact: Bool
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: compact ? 2 : 3) {
                 Image(systemName: option.icon)
-                    .font(.system(size: 17, weight: .black))
+                    .font(.system(size: compact ? 15 : 17, weight: .black))
                 Text(option.rawValue)
-                    .font(.system(size: 9.5, weight: .black, design: .rounded))
+                    .font(.system(size: compact ? 8.7 : 9.5, weight: .black, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 46)
+            .frame(height: compact ? 40 : 46)
             .foregroundStyle(isSelected ? .white : Color(red: 0.10, green: 0.16, blue: 0.32))
             .background(isSelected ? option.color.gradient : Color.white.opacity(0.88).gradient, in: RoundedRectangle(cornerRadius: 11))
             .overlay(
