@@ -195,7 +195,7 @@ enum Daypart {
         case .morning, .noon:
             CGSize(width: 853, height: 1844)
         case .night:
-            CGSize(width: 851, height: 1848)
+            CGSize(width: 851, height: 1847)
         }
     }
 }
