@@ -968,7 +968,10 @@ struct AddTaskSheet: View {
                     .textFieldStyle(.plain)
                     .padding(.horizontal, artworkFrame.width * 0.034)
                     .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.036)
-                    .background(Color.white.opacity(0.001), in: Capsule())
+                    .background(
+                        title.isEmpty ? Color.white.opacity(0.001) : Color.white.opacity(0.96),
+                        in: Capsule()
+                    )
                     .position(
                         x: artworkFrame.midX,
                         y: artworkFrame.minY + artworkFrame.height * 0.507
