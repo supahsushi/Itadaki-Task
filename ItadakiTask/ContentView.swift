@@ -188,56 +188,52 @@ struct ContentView: View {
     private let daypart = Daypart()
 
     var body: some View {
-        ZStack {
-            SceneBackground(daypart: daypart)
+        GeometryReader { proxy in
+            let spacing = max(8, min(14, proxy.size.height * 0.012))
+            let chefHeight = max(250, min(330, proxy.size.height * 0.32))
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    HeaderView(
-                        customerName: displayName,
-                        eatenCount: sushiEatenToday,
-                        maxCount: mealLimit,
-                        daypart: daypart
-                    ) {
-                        draftName = customerName
-                        showingNamePrompt = true
+            ZStack {
+                SceneBackground(daypart: daypart)
+
+                VStack(spacing: spacing) {
+                        HeaderView(
+                            customerName: displayName,
+                            eatenCount: sushiEatenToday,
+                            maxCount: mealLimit,
+                            daypart: daypart
+                        ) {
+                            draftName = customerName
+                            showingNamePrompt = true
+                        }
+
+                        ChefStageView(
+                            daypart: daypart,
+                            nextTask: nextTask,
+                            activeCount: activeTasks.count,
+                            mealIsFull: mealIsFull,
+                            height: chefHeight
+                        )
+
+                        TaskBoardView(
+                            tasks: todaysTasks,
+                            daypart: daypart,
+                            mealIsFull: mealIsFull,
+                            recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                        ) { task in
+                            complete(task)
+                        }
+                        .frame(maxHeight: .infinity)
+
+                        BottomBar(daypart: daypart) {
+                            showingAddTask = true
+                        }
                     }
-
-                    ChefStageView(
-                        daypart: daypart,
-                        nextTask: nextTask,
-                        activeCount: activeTasks.count,
-                        mealIsFull: mealIsFull
-                    )
-
-                    PlateRailView(tasks: activeTasks, isLocked: mealIsFull)
-
-                    if mealIsFull {
-                        CustomerFullCard(daypart: daypart)
-                    }
-
-                    TaskBoardView(
-                        tasks: todaysTasks,
-                        daypart: daypart,
-                        mealIsFull: mealIsFull,
-                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
-                    ) { task in
-                        complete(task)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 112)
-            }
-
-            VStack {
-                Spacer()
-                BottomBar(daypart: daypart) {
-                    showingAddTask = true
-                }
+                    .padding(.horizontal, 16)
+                    .padding(.top, max(10, proxy.safeAreaInsets.top * 0.25))
+                    .padding(.bottom, max(4, proxy.safeAreaInsets.bottom * 0.15))
+                    .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
-        .ignoresSafeArea(.container, edges: .bottom)
         .onAppear {
             loadTasks()
             resetMealIfNeeded()
@@ -483,12 +479,13 @@ struct ChefStageView: View {
     var nextTask: SushiTask?
     var activeCount: Int
     var mealIsFull: Bool
+    var height: CGFloat
 
     var body: some View {
         ZStack(alignment: .bottom) {
             AssetImage(name: daypart.chefAsset)
                 .scaledToFill()
-                .frame(height: 332)
+                .frame(height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 26))
                 .overlay(
                     LinearGradient(
@@ -683,20 +680,29 @@ struct TaskBoardView: View {
                     .foregroundStyle(daypart.tint)
             }
 
-            VStack(spacing: 10) {
-                ForEach(tasks) { task in
-                    TaskRow(
-                        task: task,
-                        daypart: daypart,
-                        mealIsFull: mealIsFull,
-                        isEating: recentlyEatenTaskIDs.contains(task.id)
-                    ) {
-                        complete(task)
+            if mealIsFull {
+                CustomerFullCard(daypart: daypart)
+            }
+
+            ScrollView(showsIndicators: tasks.count > 3) {
+                LazyVStack(spacing: 10) {
+                    ForEach(tasks) { task in
+                        TaskRow(
+                            task: task,
+                            daypart: daypart,
+                            mealIsFull: mealIsFull,
+                            isEating: recentlyEatenTaskIDs.contains(task.id)
+                        ) {
+                            complete(task)
+                        }
                     }
                 }
+                .padding(.vertical, 1)
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(18)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28))
         .overlay(
             RoundedRectangle(cornerRadius: 28)
