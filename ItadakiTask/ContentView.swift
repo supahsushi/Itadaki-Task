@@ -169,7 +169,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "TunaTheGamer",
             sourceArtworkFilename: "01. Tuna the gamer.png",
             unlockAfterSushiEaten: 1,
-            profile: "The first character card in the sushi cast, always mid level-up with a headset, controller, boba, and a neon gaming setup."
+            profile: "This is the first proper character card for the cast, Tuna, the gamer of the group, headset on, controller in hand, boba on the desk, fully set up in his neon gaming corner. I wanted these to feel like real trading cards or character select screens, stats, a fun fact, a special move and all, instead of just a portrait. Tuna's the one who's always mid level up, and I liked giving him a whole setup that actually shows that instead of just telling you."
         ),
         CollectionCharacterProfile(
             id: "salmon-the-food-tester",
@@ -178,7 +178,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "SalmonTheFoodTester",
             sourceArtworkFilename: "02. Salmon the food tester.png",
             unlockAfterSushiEaten: 3,
-            profile: "The resident taste checker who takes freshness, flavor, presentation, and happiness seriously before anyone else gets a bite."
+            profile: "Salmon's card, the resident food tester of the group, headband on, notepad in hand, giving today's testing menu a perfect 100 out of 100. She's the one who takes tasting seriously, freshness, flavor, presentation, happiness, all checked off. I liked giving her that little food test report clipboard, it felt like the right prop for someone whose whole job in this world is making sure everything is actually good before anyone else eats it."
         ),
         CollectionCharacterProfile(
             id: "tamago-the-chill-one",
@@ -187,7 +187,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "TamagoTheChillOne",
             sourceArtworkFilename: "03. Tamago the chill one.png",
             unlockAfterSushiEaten: 5,
-            profile: "A snack-loving comfort character built around good food, good mood, good vibes, and absolutely zero urgent plans."
+            profile: "Tamago's card, and true to the name, he's just sunk into a bean bag with boba in hand, watching Sushi Quest reruns and not moving for the rest of the day. Good Food, Good Mood, Good Vibes is basically his whole personality summed up in one neon sign. Out of the whole cast he might be the one I relate to the most, snacks, a good show, and zero plans, that's a perfect day."
         ),
         CollectionCharacterProfile(
             id: "uni-the-fancy-foodie",
@@ -196,7 +196,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "UniTheFancyFoodie",
             sourceArtworkFilename: "04. Uni the fancy foodie.png",
             unlockAfterSushiEaten: 8,
-            profile: "The luxury foodie of the group, complete with crown, pearls, and refined taste for the best meal at the table."
+            profile: "Uni's card, crown, pearls, and all, because she's the fancy foodie of the group, sitting down to gyudon and sake like it's a five star meal every time. Good food, good vibes, good life is her whole motto. I liked giving her that little bit of luxury, since uni itself is already considered kind of a delicacy, it felt right to make her the one with the most refined taste in the whole cast."
         ),
         CollectionCharacterProfile(
             id: "unagi-the-surfer",
@@ -205,7 +205,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "UnagiTheSurfer",
             sourceArtworkFilename: "05. Unagi the surfer.png",
             unlockAfterSushiEaten: 10,
-            profile: "The laid-back wave chaser of the cast, all sunglasses, shaka signs, and good vibes big waves sushi days."
+            profile: "Unagi's card, sunglasses on, board under his arm, living that good vibes big waves sushi days life. Out of the whole cast he's probably the most laid back, ride the waves, chase the sun, eat good sushi, live happy, that's the entire philosophy right there. I gave him the Hawaiian shirt and shaka sign because he just felt like the type to already be barefoot on the sand before anyone else even wakes up."
         ),
         CollectionCharacterProfile(
             id: "mackerel-the-photographer",
@@ -214,7 +214,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "MackerelThePhotographer",
             sourceArtworkFilename: "06. Mackerel the Photographer.png",
             unlockAfterSushiEaten: 15,
-            profile: "A travel-log character with camera ready, always chasing the perfect shot through cherry blossoms and Mt. Fuji views."
+            profile: "Mackerel's card, camera around his neck, bucket hat on, out chasing the perfect shot of Mt. Fuji through the cherry blossoms. Find beauty, take photos, eat good sushi, repeat, that's his whole daily plan written right there on the chalkboard. He's the one who's always got a travel log and a bag full of gear, documenting this whole world one photo at a time."
         ),
         CollectionCharacterProfile(
             id: "squid-the-dj",
@@ -223,7 +223,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "SquidTheDJ",
             sourceArtworkFilename: "07. Squid the DJ.png",
             unlockAfterSushiEaten: 20,
-            profile: "A glossy neon DJ who shifts color and energy to match the beat, bringing the sushi world into music mode."
+            profile: "Squid's card, headphones on, hands on the decks, good beats good vibes perfect flow lighting up behind him. This is a different squid than DJ Tako, same job, different vibe entirely, glossy and glowing instead of grungy and rave lit. Squid can change colors and vibes to match the perfect beat is literally true for this character, and I liked leaning into that with all the shifting neon around him."
         ),
         CollectionCharacterProfile(
             id: "yellowtail-the-traveler",
@@ -232,7 +232,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "YellowtailTheTraveler",
             sourceArtworkFilename: "08. Yellowtail the Traveler.png",
             unlockAfterSushiEaten: 25,
-            profile: "The map-and-passport explorer who finds hidden sushi spots, new places, and memories worth keeping."
+            profile: "Yellowtail's card, passport and map in hand, suitcase covered in stickers from everywhere he's already been. New places, new tastes, new memories to treasure sums him up completely. He's the one who always finds the hidden sushi spot nobody else knew about, which felt like the perfect special skill for the traveler of the group."
         ),
         CollectionCharacterProfile(
             id: "scallop-the-fisherman",
@@ -241,7 +241,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "ScallopTheFisherman",
             sourceArtworkFilename: "09. Scallop the Fisherman.png",
             unlockAfterSushiEaten: 30,
-            profile: "A bonus cast member out on the water with binoculars and nets, bringing patience, passion, and the perfect catch."
+            profile: "Scallop's card, out on his own little boat riding the Great Wave, binoculars around his neck and a net full of today's catch. Patience, passion, and the perfect catch is his whole thing. He's technically outside the original eight, a bonus character I added once the cast started feeling like it needed someone actually out on the water bringing in the fish everyone else gets to eat."
         ),
         CollectionCharacterProfile(
             id: "mama-roe-the-shopper",
@@ -250,7 +250,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "MamaRoeTheShopper",
             sourceArtworkFilename: "10. Mama Roe the shopper.png",
             unlockAfterSushiEaten: 35,
-            profile: "A caretaker character with a cart full of fresh produce and sushi snacks, feeding happy little roes with love."
+            profile: "Mama Roe's card, cart full of fresh produce and sushi snacks, a whole little family of baby roe following behind her at the store. Shopping with love, feeding happy little roes is exactly what she's about. She felt like the natural next character after the original eight, someone who takes care of everyone else in this world instead of being out on her own adventure."
         ),
         CollectionCharacterProfile(
             id: "red-snapper-the-taiko-master",
@@ -259,7 +259,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "RedSnapperTaikoMaster",
             sourceArtworkFilename: "11. Red Snapper the Taiko drum master.png",
             unlockAfterSushiEaten: 40,
-            profile: "A festival-energy character whose drumbeat brings joy, rhythm, and connection to the whole cast."
+            profile: "Red Snapper's card, drumsticks raised, taiko drums on either side, a whole crowd of friends drumming along behind him at what looks like a festival. Every beat brings joy, every rhythm connects us all, is basically the heart of this whole card. I wanted at least one character built entirely around a traditional performance art instead of a modern hobby, and taiko drumming felt like the perfect fit for that energy."
         ),
         CollectionCharacterProfile(
             id: "sushiroll-the-librarian",
@@ -268,7 +268,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "SushiRollTheLibrarian",
             sourceArtworkFilename: "12. SushiRoll the Librarian.png",
             unlockAfterSushiEaten: 45,
-            profile: "The quiet keeper of the sushi archive, carrying books and wisdom from a cozy library corner."
+            profile: "SushiRoll's card, glasses on, arms full of books, tucked into a cozy library corner surrounded by shelves. Books nourish the soul, and every book is an adventure waiting to be rolled, which might be my favorite line out of any of these cards. She keeps the whole sushi archive in order, quiet but full of wisdom, and I liked giving this world at least one character whose whole personality is just loving to read."
         ),
         CollectionCharacterProfile(
             id: "lobster-crab-the-sumo-bros",
@@ -277,7 +277,7 @@ struct CollectionCharacterProfile: Identifiable, Equatable {
             assetName: "LobsterCrabSumoBros",
             sourceArtworkFilename: "13. The Sumo Bros 2.png",
             unlockAfterSushiEaten: 50,
-            profile: "A dramatic duo card: two shellfish brothers settling eternal bragging rights in the sumo ring."
+            profile: "Lobster and Crab's card, squared off in the ring in front of a packed crowd, sumo belts on and claws raised. No retreat, only sushi glory pretty much says it all. I wanted a duo card instead of just another solo character, two shellfish brothers who settle everything in the ring, one match, one winner, eternal bragging rights. It's probably the most dramatic card in the whole set, and I love that about it."
         )
     ]
 }
