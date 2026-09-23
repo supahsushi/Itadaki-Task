@@ -445,6 +445,8 @@ struct ContentView: View {
                 }
 
                 if !mealIsFull {
+                    OrderBoardCleanLayer(artworkFrame: artworkFrame)
+
                     Button {
                         showingAddTask = true
                     } label: {
@@ -1126,6 +1128,77 @@ struct OrderMenuHitZones: View {
     }
 }
 
+struct OrderBoardCleanLayer: View {
+    var artworkFrame: CGRect
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: artworkFrame.width * 0.026)
+                .fill(Color(red: 1.0, green: 0.91, blue: 0.77).opacity(0.97))
+                .overlay(
+                    RoundedRectangle(cornerRadius: artworkFrame.width * 0.026)
+                        .stroke(Color(red: 0.66, green: 0.36, blue: 0.17).opacity(0.24), lineWidth: 2)
+                )
+                .frame(width: artworkFrame.width * 0.760, height: artworkFrame.height * 0.270)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.420,
+                    y: artworkFrame.minY + artworkFrame.height * 0.545
+                )
+
+            HStack(spacing: artworkFrame.width * 0.008) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: max(14, artworkFrame.width * 0.023), weight: .black))
+                    .foregroundStyle(Color(red: 0.93, green: 0.36, blue: 0.18))
+                Text("Today's Orders")
+                    .font(.system(size: max(16, artworkFrame.width * 0.027), weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.07, green: 0.08, blue: 0.10))
+                Text("🍁")
+                    .font(.system(size: max(13, artworkFrame.width * 0.021)))
+            }
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * 0.208,
+                y: artworkFrame.minY + artworkFrame.height * 0.421
+            )
+
+            Text("Complete your tasks. Enjoy your sushi!")
+                .font(.system(size: max(8, artworkFrame.width * 0.013), weight: .bold, design: .rounded))
+                .foregroundStyle(Color(red: 0.27, green: 0.25, blue: 0.23))
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.213,
+                    y: artworkFrame.minY + artworkFrame.height * 0.439
+                )
+
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.36, blue: 0.56),
+                            Color(red: 0.82, green: 0.13, blue: 0.22)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: Color(red: 0.45, green: 0.07, blue: 0.05).opacity(0.30), radius: 3, y: 2)
+                .frame(width: artworkFrame.width * 0.190, height: artworkFrame.height * 0.036)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.711,
+                    y: artworkFrame.minY + artworkFrame.height * 0.423
+                )
+
+            Text("+ Add a Task")
+                .font(.system(size: max(10, artworkFrame.width * 0.017), weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.711,
+                    y: artworkFrame.minY + artworkFrame.height * 0.423
+                )
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 struct CustomerFullCard: View {
     var daypart: Daypart
 
@@ -1223,6 +1296,10 @@ struct TaskRow: View {
         }
         .padding(.horizontal, 8)
         .frame(height: 38)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.62))
+        )
     }
 }
 
