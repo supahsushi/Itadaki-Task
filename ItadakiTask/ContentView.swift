@@ -961,22 +961,30 @@ struct AddTaskSheet: View {
                     y: artworkFrame.minY + artworkFrame.height * 0.471
                 )
 
-                TextField("", text: $title)
-                    .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
-                    .submitLabel(.done)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, artworkFrame.width * 0.034)
-                    .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.036)
-                    .background(
-                        title.isEmpty ? Color.white.opacity(0.001) : Color.white.opacity(0.96),
-                        in: Capsule()
-                    )
-                    .position(
-                        x: artworkFrame.midX,
-                        y: artworkFrame.minY + artworkFrame.height * 0.507
-                    )
-                    .accessibilityLabel("What would you like to do?")
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.96))
+
+                    if title.isEmpty {
+                        Text("What would you like to do?")
+                            .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.34, green: 0.50, blue: 0.74).opacity(0.78))
+                            .padding(.horizontal, artworkFrame.width * 0.034)
+                    }
+
+                    TextField("", text: $title)
+                        .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
+                        .submitLabel(.done)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, artworkFrame.width * 0.034)
+                }
+                .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.036)
+                .position(
+                    x: artworkFrame.midX,
+                    y: artworkFrame.minY + artworkFrame.height * 0.507
+                )
+                .accessibilityLabel("What would you like to do?")
 
                 ForEach(Array(TaskCategory.allCases.enumerated()), id: \.element.id) { index, option in
                     categoryButton(option: option, index: index, artworkFrame: artworkFrame)
