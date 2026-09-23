@@ -437,6 +437,13 @@ struct ContentView: View {
                     artworkFrame: artworkFrame
                 )
 
+                OrderMenuHitZones(
+                    artworkFrame: artworkFrame,
+                    showsRightSideOrderButton: !mealIsFull
+                ) {
+                    showingAddTask = true
+                }
+
                 if !mealIsFull {
                     Button {
                         showingAddTask = true
@@ -1064,6 +1071,40 @@ struct ArtworkNavigationHitZones: View {
         case 2: "Chef"
         case 3: "Collection"
         default: "Achievements"
+        }
+    }
+}
+
+struct OrderMenuHitZones: View {
+    var artworkFrame: CGRect
+    var showsRightSideOrderButton: Bool
+    var openOrders: () -> Void
+
+    var body: some View {
+        ZStack {
+            Button(action: openOrders) {
+                Color.black.opacity(0.001)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Orders")
+            .frame(width: artworkFrame.width * 0.17, height: artworkFrame.height * 0.063)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * 0.315,
+                y: artworkFrame.minY + artworkFrame.height * 0.956
+            )
+
+            if showsRightSideOrderButton {
+                Button(action: openOrders) {
+                    Color.black.opacity(0.001)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Orders")
+                .frame(width: artworkFrame.width * 0.125, height: artworkFrame.height * 0.055)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.915,
+                    y: artworkFrame.minY + artworkFrame.height * 0.451
+                )
+            }
         }
     }
 }
