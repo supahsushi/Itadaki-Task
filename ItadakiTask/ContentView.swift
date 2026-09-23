@@ -1303,19 +1303,29 @@ struct AddTaskSheet: View {
                     y: artworkFrame.minY + artworkFrame.height * 0.471
                 )
 
+                AddTaskTextCleanupLayer(artworkFrame: artworkFrame)
+
+                AddTaskStaticTextLayer(
+                    titleCount: min(title.count, 60),
+                    dateText: dateText,
+                    timeText: timeText,
+                    repeatOption: repeatOption,
+                    artworkFrame: artworkFrame
+                )
+
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
                         .fill(Color.white.opacity(0.96))
 
                     if title.isEmpty {
-                        Text(daypart == .night ? "e.g. Drink water, Read a book, Go for a walk..." : "What would you like to do?")
-                            .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.34, green: 0.50, blue: 0.74).opacity(0.78))
+                        Text("What would you like to do?")
+                            .font(.system(size: max(15, artworkFrame.width * 0.021), weight: .bold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.45, green: 0.49, blue: 0.58).opacity(0.72))
                             .padding(.horizontal, artworkFrame.width * 0.034)
                     }
 
                     TextField("", text: $title)
-                        .font(.system(size: max(16, artworkFrame.width * 0.026), weight: .bold, design: .rounded))
+                        .font(.system(size: max(16, artworkFrame.width * 0.023), weight: .black, design: .rounded))
                         .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
                         .submitLabel(.done)
                         .textFieldStyle(.plain)
@@ -1332,14 +1342,6 @@ struct AddTaskSheet: View {
                         title = String(newValue.prefix(60))
                     }
                 }
-
-                Text("\(min(title.count, 60))/60")
-                    .font(.system(size: max(11, artworkFrame.width * 0.017), weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.38, green: 0.46, blue: 0.58).opacity(0.74))
-                    .position(
-                        x: artworkFrame.minX + artworkFrame.width * 0.875,
-                        y: artworkFrame.minY + artworkFrame.height * 0.532
-                    )
 
                 dateTimeButton(
                     label: dateText,
@@ -1380,6 +1382,16 @@ struct AddTaskSheet: View {
                     y: artworkFrame.minY + artworkFrame.height * 0.702
                 )
                 .disabled(trimmedTitle.isEmpty)
+
+                Text("Add Task")
+                    .font(.system(size: max(22, artworkFrame.width * 0.034), weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                    .allowsHitTesting(false)
+                    .position(
+                        x: artworkFrame.midX,
+                        y: artworkFrame.minY + artworkFrame.height * 0.702
+                    )
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
@@ -1449,15 +1461,7 @@ struct AddTaskSheet: View {
 
     private func dateTimeButton(label: String, artworkFrame: CGRect, centerX: CGFloat, centerY: CGFloat, width: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: max(15, artworkFrame.width * 0.024), weight: .black, design: .rounded))
-                .foregroundStyle(Color(red: 0.00, green: 0.42, blue: 0.78))
-                .lineLimit(1)
-                .minimumScaleFactor(0.62)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, artworkFrame.width * 0.10)
-                .frame(height: artworkFrame.height * 0.058)
-                .background(Color.white.opacity(0.001))
+            Color.black.opacity(0.001)
         }
         .buttonStyle(.plain)
         .frame(width: artworkFrame.width * width, height: artworkFrame.height * 0.058)
@@ -1539,6 +1543,142 @@ struct AddTaskSheet: View {
     }
 }
 
+struct AddTaskTextCleanupLayer: View {
+    var artworkFrame: CGRect
+
+    private var paper: Color {
+        Color(red: 1.0, green: 0.92, blue: 0.80).opacity(0.94)
+    }
+
+    private var tilePaper: Color {
+        Color.white.opacity(0.96)
+    }
+
+    var body: some View {
+        ZStack {
+            cleanupPatch(width: 0.42, height: 0.036, x: 0.50, y: 0.471, color: paper)
+            cleanupPatch(width: 0.46, height: 0.020, x: 0.50, y: 0.492, color: paper)
+            cleanupPatch(width: 0.60, height: 0.020, x: 0.50, y: 0.548, color: paper)
+            cleanupPatch(width: 0.13, height: 0.020, x: 0.866, y: 0.532, color: tilePaper)
+            cleanupPatch(width: 0.28, height: 0.030, x: 0.205, y: 0.560, color: paper)
+            cleanupPatch(width: 0.31, height: 0.030, x: 0.210, y: 0.588, color: tilePaper)
+            cleanupPatch(width: 0.27, height: 0.030, x: 0.615, y: 0.588, color: tilePaper)
+            cleanupPatch(width: 0.36, height: 0.030, x: 0.230, y: 0.633, color: paper)
+
+            ForEach(AddTaskRepeatOption.allCases) { option in
+                cleanupPatch(width: option.width * 0.82, height: 0.030, x: option.centerX, y: 0.654, color: tilePaper)
+            }
+
+            cleanupPatch(width: 0.29, height: 0.035, x: 0.50, y: 0.702, color: Color(red: 1.0, green: 0.14, blue: 0.44).opacity(0.98))
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func cleanupPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat, color: Color) -> some View {
+        RoundedRectangle(cornerRadius: artworkFrame.width * 0.014)
+            .fill(color)
+            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * x,
+                y: artworkFrame.minY + artworkFrame.height * y
+            )
+    }
+}
+
+struct AddTaskStaticTextLayer: View {
+    var titleCount: Int
+    var dateText: String
+    var timeText: String
+    var repeatOption: AddTaskRepeatOption
+    var artworkFrame: CGRect
+
+    private var ink: Color {
+        Color(red: 0.07, green: 0.09, blue: 0.15)
+    }
+
+    private var softInk: Color {
+        Color(red: 0.38, green: 0.43, blue: 0.52)
+    }
+
+    var body: some View {
+        ZStack {
+            Text("Add a Task")
+                .font(.system(size: max(22, artworkFrame.width * 0.035), weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.470)
+
+            Text("Tell Chef what you want to do!")
+                .font(.system(size: max(12, artworkFrame.width * 0.017), weight: .semibold, design: .rounded))
+                .foregroundStyle(ink.opacity(0.84))
+                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.492)
+
+            Text("e.g. Drink water, Read a book, Go for a walk...")
+                .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .bold, design: .rounded))
+                .foregroundStyle(softInk.opacity(0.78))
+                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.548)
+
+            Text("\(titleCount)/60")
+                .font(.system(size: max(11, artworkFrame.width * 0.017), weight: .black, design: .rounded))
+                .foregroundStyle(softInk.opacity(0.80))
+                .position(x: artworkFrame.minX + artworkFrame.width * 0.872, y: artworkFrame.minY + artworkFrame.height * 0.532)
+
+            Text("Date & Time")
+                .font(.system(size: max(16, artworkFrame.width * 0.024), weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+                .frame(width: artworkFrame.width * 0.28, alignment: .leading)
+                .position(x: artworkFrame.minX + artworkFrame.width * 0.215, y: artworkFrame.minY + artworkFrame.height * 0.561)
+
+            dateTileLabel("Date", detail: dateText, x: 0.267)
+            dateTileLabel("Time", detail: timeText, x: 0.661)
+
+            Text("Repeat")
+                .font(.system(size: max(16, artworkFrame.width * 0.024), weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+                .frame(width: artworkFrame.width * 0.24, alignment: .leading)
+                .position(x: artworkFrame.minX + artworkFrame.width * 0.203, y: artworkFrame.minY + artworkFrame.height * 0.633)
+
+            ForEach(AddTaskRepeatOption.allCases) { option in
+                repeatLabel(option)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func dateTileLabel(_ title: String, detail: String, x: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.system(size: max(10, artworkFrame.width * 0.015), weight: .black, design: .rounded))
+                .foregroundStyle(ink.opacity(0.92))
+            Text(detail)
+                .font(.system(size: max(12, artworkFrame.width * 0.018), weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+        }
+        .frame(width: artworkFrame.width * 0.23, alignment: .leading)
+        .position(x: artworkFrame.minX + artworkFrame.width * x, y: artworkFrame.minY + artworkFrame.height * 0.588)
+    }
+
+    private func repeatLabel(_ option: AddTaskRepeatOption) -> some View {
+        VStack(spacing: 1) {
+            Text(option.title)
+                .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .black, design: .rounded))
+                .foregroundStyle(repeatOption == option ? Color(red: 1.0, green: 0.14, blue: 0.43) : ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+            if let subtitle = option.subtitle {
+                Text(subtitle)
+                    .font(.system(size: max(8, artworkFrame.width * 0.012), weight: .bold, design: .rounded))
+                    .foregroundStyle(softInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+        }
+        .frame(width: artworkFrame.width * option.width * 0.82)
+        .position(x: artworkFrame.minX + artworkFrame.width * option.centerX, y: artworkFrame.minY + artworkFrame.height * 0.654)
+    }
+}
+
 enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
     case none
     case daily
@@ -1568,6 +1708,27 @@ enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
         case .weekdays: "Repeat weekdays"
         case .weekends: "Repeat weekends"
         case .tomorrow: "Schedule tomorrow"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .none: "None"
+        case .daily: "Daily"
+        case .weekdays: "Weekdays"
+        case .weekends: "Weekends"
+        case .tomorrow: "Tomorrow"
+        }
+    }
+
+    var subtitle: String? {
+        switch self {
+        case .weekdays:
+            return "Mon - Fri"
+        case .weekends:
+            return "Sat - Sun"
+        default:
+            return nil
         }
     }
 
