@@ -195,7 +195,7 @@ enum Daypart {
         case .morning, .noon:
             CGSize(width: 853, height: 1844)
         case .night:
-            CGSize(width: 941, height: 1672)
+            CGSize(width: 851, height: 1848)
         }
     }
 }
@@ -216,7 +216,48 @@ struct ContentView: View {
     private let daypart = Daypart()
 
     var body: some View {
-        ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
+        GeometryReader { proxy in
+            let artworkFrame = fittedArtworkFrame(
+                container: proxy.size,
+                artwork: daypart.chefArtworkSize
+            )
+            let rowArea = CGRect(
+                x: artworkFrame.minX + artworkFrame.width * 0.075,
+                y: artworkFrame.minY + artworkFrame.height * 0.462,
+                width: artworkFrame.width * 0.715,
+                height: artworkFrame.height * 0.214
+            )
+
+            ZStack {
+                ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
+
+                Button {
+                    showingAddTask = true
+                } label: {
+                    Color.black.opacity(0.001)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add a Task")
+                .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.711,
+                    y: artworkFrame.minY + artworkFrame.height * 0.423
+                )
+
+                TaskBoardView(
+                    tasks: todaysTasks,
+                    daypart: daypart,
+                    mealIsFull: mealIsFull,
+                    recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                ) { task in
+                    complete(task)
+                }
+                .frame(width: rowArea.width, height: rowArea.height)
+                .position(x: rowArea.midX, y: rowArea.midY)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+        }
         .onAppear {
             loadTasks()
             resetMealIfNeeded()
@@ -499,8 +540,8 @@ struct TaskBoardView: View {
                 CustomerFullCard(daypart: daypart)
             }
 
-            ScrollView(showsIndicators: tasks.count > 3) {
-                LazyVStack(spacing: 5) {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 3) {
                     ForEach(tasks) { task in
                         TaskRow(
                             task: task,
@@ -544,17 +585,18 @@ struct TaskRow: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(task.category.color.gradient)
                 Image(systemName: task.category.icon)
-                    .font(.system(size: 19, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
-                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundStyle(task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33))
                     .strikethrough(task.isEaten, color: .secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 HStack(spacing: 6) {
                     Text("Today")
                     Text(task.dueDate, style: .time)
@@ -563,7 +605,7 @@ struct TaskRow: View {
                         Text(task.recurrence.rawValue)
                     }
                 }
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 10.5, weight: .bold, design: .rounded))
                 .foregroundStyle(Color(red: 0.26, green: 0.34, blue: 0.48))
             }
 
@@ -571,7 +613,7 @@ struct TaskRow: View {
 
             ZStack {
                 SushiNigiriView(category: task.category)
-                    .frame(width: 56, height: 38)
+                    .frame(width: 48, height: 32)
                     .scaleEffect(isEating ? 0.1 : 1)
                     .opacity(task.isEaten ? 0.12 : 1)
                     .rotationEffect(.degrees(isEating ? 18 : 0))
@@ -581,7 +623,7 @@ struct TaskRow: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .frame(width: 60, height: 44)
+            .frame(width: 52, height: 34)
 
             CompletionCircle(
                 isComplete: task.isEaten,
@@ -592,7 +634,7 @@ struct TaskRow: View {
             .accessibilityLabel(task.isEaten ? "\(task.title) completed" : "Complete \(task.title)")
         }
         .padding(.horizontal, 8)
-        .frame(height: 49)
+        .frame(height: 38)
         .background(Color.white.opacity(task.isEaten ? 0.42 : 0.74), in: RoundedRectangle(cornerRadius: 16))
     }
 }
@@ -608,11 +650,11 @@ struct CompletionCircle: View {
             ZStack {
                 Circle()
                     .strokeBorder(isLocked ? Color.secondary.opacity(0.35) : tint, lineWidth: 3)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
 
                 Circle()
                     .fill(Color.green.gradient)
-                    .frame(width: isComplete ? 32 : 4, height: isComplete ? 32 : 4)
+                    .frame(width: isComplete ? 28 : 4, height: isComplete ? 28 : 4)
                     .opacity(isComplete ? 1 : 0)
 
                 Image(systemName: "checkmark")
