@@ -190,11 +190,12 @@ enum Daypart {
         }
     }
 
-    var greeting: String {
+    var chefArtworkSize: CGSize {
         switch self {
-        case .morning: "Morning omakase"
-        case .noon: "Noon rush"
-        case .night: "Night service"
+        case .morning, .noon:
+            CGSize(width: 853, height: 1844)
+        case .night:
+            CGSize(width: 941, height: 1672)
         }
     }
 }
@@ -216,56 +217,68 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let isCompactHeight = proxy.size.height < 880
-            let horizontalPadding = max(12, min(16, proxy.size.width * 0.04))
-            let topPadding = max(8, proxy.safeAreaInsets.top + 6)
-            let bottomPadding = max(6, proxy.safeAreaInsets.bottom + 6)
-            let spacing = max(7, min(12, proxy.size.height * 0.011))
-            let chefHeight = max(190, min(isCompactHeight ? 250 : 310, proxy.size.height * (isCompactHeight ? 0.26 : 0.29)))
+            let artworkFrame = fittedArtworkFrame(
+                container: proxy.size,
+                artwork: daypart.chefArtworkSize
+            )
+            let rowArea = CGRect(
+                x: artworkFrame.minX + artworkFrame.width * 0.075,
+                y: artworkFrame.minY + artworkFrame.height * 0.492,
+                width: artworkFrame.width * 0.714,
+                height: artworkFrame.height * 0.203
+            )
 
             ZStack {
-                SceneBackground(daypart: daypart)
+                ArtworkBackground(name: daypart.chefAsset, artworkSize: daypart.chefArtworkSize)
 
-                VStack(spacing: spacing) {
-                    HeaderView(
-                        customerName: displayName,
-                        eatenCount: sushiEatenToday,
-                        maxCount: mealLimit,
-                        daypart: daypart
-                    ) {
-                        draftName = customerName
-                        showingNamePrompt = true
-                    }
+                Button {
+                    draftName = customerName
+                    showingNamePrompt = true
+                } label: {
+                    CustomerNameText(name: displayName)
+                }
+                .buttonStyle(.plain)
+                .frame(width: artworkFrame.width * 0.16, alignment: .leading)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.16,
+                    y: artworkFrame.minY + artworkFrame.height * 0.066
+                )
 
-                    ChefStageView(
-                        daypart: daypart,
-                        nextTask: nextTask,
-                        activeCount: activeTasks.count,
-                        mealIsFull: mealIsFull,
-                        height: chefHeight
+                MealCountText(eatenCount: sushiEatenToday, maxCount: mealLimit)
+                    .frame(width: artworkFrame.width * 0.16, alignment: .center)
+                    .position(
+                        x: artworkFrame.minX + artworkFrame.width * 0.855,
+                        y: artworkFrame.minY + artworkFrame.height * 0.066
                     )
 
-                    TaskBoardView(
-                        tasks: todaysTasks,
-                        daypart: daypart,
-                        mealIsFull: mealIsFull,
-                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
-                    ) { task in
-                        complete(task)
-                    }
-                    .frame(maxHeight: .infinity)
-                    .layoutPriority(1)
-
-                    BottomBar(daypart: daypart) {
-                        showingAddTask = true
-                    }
+                Button {
+                    showingAddTask = true
+                } label: {
+                    Color.black.opacity(0.001)
                 }
-                .padding(.horizontal, horizontalPadding)
-                .padding(.top, topPadding)
-                .padding(.bottom, bottomPadding)
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipped()
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add a Task")
+                .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
+                .position(
+                    x: artworkFrame.minX + artworkFrame.width * 0.713,
+                    y: artworkFrame.minY + artworkFrame.height * 0.458
+                )
+
+                TaskBoardView(
+                    tasks: todaysTasks,
+                    daypart: daypart,
+                    mealIsFull: mealIsFull,
+                    recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                ) { task in
+                    complete(task)
+                }
+                .frame(width: rowArea.width, height: rowArea.height)
+                .position(x: rowArea.midX, y: rowArea.midY)
+
+                ArtworkNavigationHitZones(frame: artworkFrame)
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
         }
         .onAppear {
             loadTasks()
@@ -293,7 +306,7 @@ struct ContentView: View {
                 hasAskedCustomerName = true
             }
         } message: {
-            Text("Chef will write it on your Sushi Champloo order board.")
+            Text("Chef will write it on your Itadaki Task order board.")
         }
     }
 
@@ -326,6 +339,18 @@ struct ContentView: View {
 
     private var mealIsFull: Bool {
         sushiEatenToday >= mealLimit
+    }
+
+    private func fittedArtworkFrame(container: CGSize, artwork: CGSize) -> CGRect {
+        let scale = max(container.width / artwork.width, container.height / artwork.height)
+        let width = artwork.width * scale
+        let height = artwork.height * scale
+        return CGRect(
+            x: (container.width - width) / 2,
+            y: (container.height - height) / 2,
+            width: width,
+            height: height
+        )
     }
 
     private func complete(_ task: SushiTask) {
@@ -424,31 +449,21 @@ struct ContentView: View {
     }
 }
 
-struct SceneBackground: View {
-    var daypart: Daypart
+struct ArtworkBackground: View {
+    var name: String
+    var artworkSize: CGSize
 
     var body: some View {
         GeometryReader { proxy in
+            let scale = max(proxy.size.width / artworkSize.width, proxy.size.height / artworkSize.height)
+            let width = artworkSize.width * scale
+            let height = artworkSize.height * scale
+
             ZStack {
-                AssetImage(name: daypart.orderAsset)
+                AssetImage(name: name)
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(width: width, height: height)
                     .clipped()
-                    .saturation(0.92)
-                    .blur(radius: 2)
-
-                LinearGradient(
-                    colors: [
-                        .black.opacity(0.18),
-                        .black.opacity(0.05),
-                        .black.opacity(0.52)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-
-                Rectangle()
-                    .fill(.ultraThinMaterial.opacity(0.2))
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
@@ -458,209 +473,59 @@ struct SceneBackground: View {
     }
 }
 
-struct HeaderView: View {
-    var customerName: String
-    var eatenCount: Int
-    var maxCount: Int
-    var daypart: Daypart
-    var editName: () -> Void
+struct CustomerNameText: View {
+    var name: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: editName) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(daypart.tint.gradient)
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(width: 54, height: 54)
+        Text(name)
+            .font(.system(size: 19, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+    }
+}
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(customerName)
-                            .font(.system(size: 20, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                        Text(daypart.greeting)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.78))
-                    }
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.black.opacity(0.38), in: RoundedRectangle(cornerRadius: 22))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(.white.opacity(0.28), lineWidth: 1)
-                )
+struct MealCountText: View {
+    var eatenCount: Int
+    var maxCount: Int
+
+    var body: some View {
+        Text("\(eatenCount) / \(maxCount)")
+            .font(.system(size: 23, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+    }
+}
+
+struct ArtworkNavigationHitZones: View {
+    var frame: CGRect
+
+    var body: some View {
+        ForEach(0..<5) { index in
+            Button {} label: {
+                Color.black.opacity(0.001)
             }
             .buttonStyle(.plain)
-
-            VStack(spacing: 2) {
-                HStack(spacing: 5) {
-                    Text("🍣")
-                    Text("\(eatenCount) / \(maxCount)")
-                        .font(.system(size: 21, weight: .heavy, design: .rounded))
-                }
-                Text("eaten today")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .background(.black.opacity(0.42), in: RoundedRectangle(cornerRadius: 22))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(daypart.tint.opacity(0.8), lineWidth: 1.5)
+            .accessibilityLabel(tabName(for: index))
+            .frame(width: frame.width * 0.16, height: frame.height * 0.058)
+            .position(
+                x: frame.minX + frame.width * (0.13 + CGFloat(index) * 0.185),
+                y: frame.minY + frame.height * 0.956
             )
         }
     }
-}
 
-struct ChefStageView: View {
-    var daypart: Daypart
-    var nextTask: SushiTask?
-    var activeCount: Int
-    var mealIsFull: Bool
-    var height: CGFloat
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            AssetImage(name: daypart.chefAsset)
-                .aspectRatio(contentMode: .fill)
-                .frame(height: height)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 26))
-                .overlay(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.58)],
-                        startPoint: .center,
-                        endPoint: .bottom
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 26))
-                )
-
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Sushi Champloo")
-                        .font(.system(size: 28, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text(stageMessage)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.86))
-                }
-
-                Spacer()
-
-                VStack(spacing: 2) {
-                    Text("\(activeCount)")
-                        .font(.system(size: 30, weight: .black, design: .rounded))
-                    Text("orders")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.black.opacity(0.36), in: RoundedRectangle(cornerRadius: 18))
-            }
-            .padding(18)
+    private func tabName(for index: Int) -> String {
+        switch index {
+        case 0: "Home"
+        case 1: "Orders"
+        case 2: "Chef"
+        case 3: "Collection"
+        default: "Achievements"
         }
-        .shadow(color: .black.opacity(0.28), radius: 22, x: 0, y: 14)
-    }
-
-    private var stageMessage: String {
-        if mealIsFull {
-            return "Chef bows. Your customer is full."
-        }
-        return nextTask == nil ? "The plate is clear." : "Chef is serving your next nigiri."
-    }
-}
-
-struct PlateRailView: View {
-    var tasks: [SushiTask]
-    var isLocked: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Chef's plate", systemImage: "takeoutbag.and.cup.and.straw.fill")
-                    .font(.system(size: 19, weight: .black, design: .rounded))
-                Spacer()
-                Text(isLocked ? "full" : "\(tasks.count) waiting")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    if tasks.isEmpty {
-                        EmptyPlateView()
-                    } else {
-                        ForEach(tasks.prefix(8)) { task in
-                            SushiPlateCard(task: task, isLocked: isLocked)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
-        .overlay(
-            RoundedRectangle(cornerRadius: 26)
-                .stroke(.white.opacity(0.45), lineWidth: 1)
-        )
-    }
-}
-
-struct SushiPlateCard: View {
-    var task: SushiTask
-    var isLocked: Bool
-
-    var body: some View {
-        VStack(spacing: 8) {
-            SushiNigiriView(category: task.category)
-                .frame(width: 92, height: 64)
-                .saturation(isLocked ? 0.35 : 1)
-            Text(task.title)
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 112, height: 34)
-            Text(task.dueDate, style: .time)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.secondary)
-        }
-        .padding(12)
-        .background(.white.opacity(isLocked ? 0.56 : 0.78), in: RoundedRectangle(cornerRadius: 22))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(task.category.color.opacity(isLocked ? 0.25 : 0.55), lineWidth: 1.5)
-        )
-    }
-}
-
-struct EmptyPlateView: View {
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(.pink)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("No nigiri waiting")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                Text("Add a task and Chef will serve one up.")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(16)
-        .frame(width: 270, alignment: .leading)
-        .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 22))
     }
 }
 
@@ -668,39 +533,23 @@ struct CustomerFullCard: View {
     var daypart: Daypart
 
     var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(daypart.tint.opacity(0.16))
-                    .frame(width: 78, height: 78)
-                VStack(spacing: -2) {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 26, weight: .black))
-                        .rotationEffect(.degrees(18))
-                    Text("🍣")
-                        .font(.system(size: 24))
-                }
+        VStack(spacing: 6) {
+            Image(systemName: "hands.sparkles.fill")
+                .font(.system(size: 28, weight: .black))
                 .foregroundStyle(daypart.tint)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(spacing: 2) {
                 Text("Your customer is full!")
-                    .font(.system(size: 21, weight: .black, design: .rounded))
+                    .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundStyle(.primary)
                 Text("Come back tomorrow for another meal.")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(.secondary)
             }
-
-            Spacer()
         }
-        .padding(18)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
-        .overlay(
-            RoundedRectangle(cornerRadius: 26)
-                .stroke(daypart.tint.opacity(0.55), lineWidth: 1.4)
-        )
-        .shadow(color: daypart.tint.opacity(0.18), radius: 18, x: 0, y: 10)
+        .multilineTextAlignment(.center)
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 18))
     }
 }
 
@@ -712,27 +561,13 @@ struct TaskBoardView: View {
     var complete: (SushiTask) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Today's Orders")
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                    Text("Finish the task. Eat the sushi.")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "checklist.checked")
-                    .font(.system(size: 25, weight: .heavy))
-                    .foregroundStyle(daypart.tint)
-            }
-
+        VStack(spacing: 5) {
             if mealIsFull {
                 CustomerFullCard(daypart: daypart)
             }
 
             ScrollView(showsIndicators: tasks.count > 3) {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 5) {
                     ForEach(tasks) { task in
                         TaskRow(
                             task: task,
@@ -748,13 +583,8 @@ struct TaskBoardView: View {
             }
             .frame(maxHeight: .infinity)
         }
-        .padding(18)
+        .padding(.vertical, 2)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28)
-                .stroke(.white.opacity(0.52), lineWidth: 1)
-        )
     }
 }
 
@@ -766,42 +596,49 @@ struct TaskRow: View {
     var complete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 9) {
+            VStack(spacing: 3) {
+                ForEach(0..<3) { _ in
+                    HStack(spacing: 3) {
+                        Circle().fill(Color(red: 0.54, green: 0.43, blue: 0.36).opacity(0.55))
+                        Circle().fill(Color(red: 0.54, green: 0.43, blue: 0.36).opacity(0.55))
+                    }
+                }
+            }
+            .frame(width: 16)
+
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(task.category.color.gradient)
                 Image(systemName: task.category.icon)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .frame(width: 54, height: 54)
+            .frame(width: 44, height: 44)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundStyle(task.isEaten ? .secondary : .primary)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33))
                     .strikethrough(task.isEaten, color: .secondary)
                     .lineLimit(2)
                 HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
+                    Text("Today")
                     Text(task.dueDate, style: .time)
-                    Text("•")
-                    Text(task.category.rawValue)
                     if task.recurrence != .none {
-                        Text("•")
                         Image(systemName: task.recurrence.systemImage)
                         Text(task.recurrence.rawValue)
                     }
                 }
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(red: 0.26, green: 0.34, blue: 0.48))
             }
 
             Spacer()
 
             ZStack {
                 SushiNigiriView(category: task.category)
-                    .frame(width: 62, height: 44)
+                    .frame(width: 56, height: 38)
                     .scaleEffect(isEating ? 0.1 : 1)
                     .opacity(task.isEaten ? 0.12 : 1)
                     .rotationEffect(.degrees(isEating ? 18 : 0))
@@ -811,7 +648,7 @@ struct TaskRow: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .frame(width: 66, height: 52)
+            .frame(width: 60, height: 44)
 
             CompletionCircle(
                 isComplete: task.isEaten,
@@ -821,19 +658,9 @@ struct TaskRow: View {
             )
             .accessibilityLabel(task.isEaten ? "\(task.title) completed" : "Complete \(task.title)")
         }
-        .padding(12)
-        .background(.white.opacity(task.isEaten ? 0.45 : 0.82), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(alignment: .topTrailing) {
-            if task.isEaten {
-                Text("eaten")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.green.gradient, in: Capsule())
-                    .offset(x: -10, y: -8)
-            }
-        }
+        .padding(.horizontal, 8)
+        .frame(height: 49)
+        .background(Color.white.opacity(task.isEaten ? 0.42 : 0.74), in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -848,11 +675,11 @@ struct CompletionCircle: View {
             ZStack {
                 Circle()
                     .strokeBorder(isLocked ? Color.secondary.opacity(0.35) : tint, lineWidth: 3)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 32, height: 32)
 
                 Circle()
                     .fill(Color.green.gradient)
-                    .frame(width: isComplete ? 34 : 4, height: isComplete ? 34 : 4)
+                    .frame(width: isComplete ? 32 : 4, height: isComplete ? 32 : 4)
                     .opacity(isComplete ? 1 : 0)
 
                 Image(systemName: "checkmark")
@@ -890,60 +717,6 @@ struct EatenSparkles: View {
     }
 }
 
-struct BottomBar: View {
-    var daypart: Daypart
-    var addTask: () -> Void
-
-    var body: some View {
-        HStack(spacing: 18) {
-            BarItem(icon: "house.fill", title: "Home", isActive: true)
-            BarItem(icon: "list.bullet.clipboard.fill", title: "Orders", isActive: false)
-
-            Button(action: addTask) {
-                ZStack {
-                    Circle()
-                        .fill(daypart.tint.gradient)
-                        .frame(width: 70, height: 70)
-                        .shadow(color: daypart.tint.opacity(0.45), radius: 18, x: 0, y: 8)
-                    Image(systemName: "plus")
-                        .font(.system(size: 29, weight: .black))
-                        .foregroundStyle(.white)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Add a Task")
-
-            BarItem(icon: "book.closed.fill", title: "Collection", isActive: false)
-            BarItem(icon: "trophy.fill", title: "Wins", isActive: false)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 12)
-        .padding(.bottom, 18)
-        .background(.black.opacity(0.62), in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
-        .overlay(
-            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
-                .stroke(.white.opacity(0.24), lineWidth: 1)
-        )
-    }
-}
-
-struct BarItem: View {
-    var icon: String
-    var title: String
-    var isActive: Bool
-
-    var body: some View {
-        VStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 22, weight: .bold))
-            Text(title)
-                .font(.system(size: 11, weight: .black, design: .rounded))
-        }
-        .frame(maxWidth: .infinity)
-        .foregroundStyle(isActive ? .pink : .white.opacity(0.78))
-    }
-}
-
 struct AddTaskSheet: View {
     var daypart: Daypart
     var addTask: (SushiTask) -> Void
@@ -968,7 +741,6 @@ struct AddTaskSheet: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
                     .opacity(0.72)
-                    .blur(radius: 1.5)
                     .ignoresSafeArea()
 
                 LinearGradient(
@@ -1266,7 +1038,7 @@ struct AssetImage: View {
                 Text("寿司")
                     .font(.system(size: 76, weight: .black, design: .rounded))
                     .foregroundStyle(.white.opacity(0.9))
-                Text("Sushi Champloo")
+                Text("Itadaki Task")
                     .font(.system(size: 28, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
             }
