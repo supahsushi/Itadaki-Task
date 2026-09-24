@@ -10,6 +10,8 @@
 		8D8C7E352C00000100D4A100 /* ItadakiTaskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E342C00000100D4A100 /* ItadakiTaskApp.swift */; };
 		8D8C7E372C00000100D4A100 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E362C00000100D4A100 /* ContentView.swift */; };
 		8D8C7E392C00000100D4A100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D8C7E382C00000100D4A100 /* Assets.xcassets */; };
+		8D8C7E422C00000100D4A100 /* AchievementSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E412C00000100D4A100 /* AchievementSystem.swift */; };
+		8D8C7E442C00000100D4A100 /* AchievementsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +20,8 @@
 		8D8C7E362C00000100D4A100 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8D8C7E382C00000100D4A100 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8D8C7E402C00000100D4A100 /* ItadakiTask.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ItadakiTask.entitlements; sourceTree = "<group>"; };
+		8D8C7E412C00000100D4A100 /* AchievementSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementSystem.swift; sourceTree = "<group>"; };
+		8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -55,6 +59,8 @@
 			children = (
 				8D8C7E342C00000100D4A100 /* ItadakiTaskApp.swift */,
 				8D8C7E362C00000100D4A100 /* ContentView.swift */,
+				8D8C7E412C00000100D4A100 /* AchievementSystem.swift */,
+				8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */,
 				8D8C7E382C00000100D4A100 /* Assets.xcassets */,
 				8D8C7E402C00000100D4A100 /* ItadakiTask.entitlements */,
 			);
@@ -138,6 +144,8 @@
 			files = (
 				8D8C7E352C00000100D4A100 /* ItadakiTaskApp.swift in Sources */,
 				8D8C7E372C00000100D4A100 /* ContentView.swift in Sources */,
+				8D8C7E422C00000100D4A100 /* AchievementSystem.swift in Sources */,
+				8D8C7E442C00000100D4A100 /* AchievementsScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

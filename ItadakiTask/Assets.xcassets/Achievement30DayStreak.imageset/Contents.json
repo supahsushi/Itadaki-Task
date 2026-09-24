@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "Achievement30DayStreak.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
