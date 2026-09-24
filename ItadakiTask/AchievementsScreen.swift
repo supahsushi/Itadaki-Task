@@ -32,18 +32,25 @@ struct AchievementsScreen: View {
             .background(Color(red: 0.98, green: 0.91, blue: 0.80))
             .navigationTitle("Achievements")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(Color(red: 0.98, green: 0.91, blue: 0.80), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.11, green: 0.08, blue: 0.05))
                 }
             }
             .sheet(item: $selectedAchievement) { achievement in
                 AchievementDetailView(achievement: achievement)
                     .presentationDetents([.medium])
+                    .presentationBackground(Color(red: 0.98, green: 0.91, blue: 0.80))
             }
         }
+        .preferredColorScheme(.light)
     }
 }
 
@@ -119,6 +126,14 @@ struct BadgeArtwork: View {
 struct AchievementDetailView: View {
     var achievement: Achievement
 
+    private var ink: Color {
+        Color(red: 0.13, green: 0.08, blue: 0.05)
+    }
+
+    private var softInk: Color {
+        Color(red: 0.42, green: 0.31, blue: 0.23)
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             BadgeArtwork(achievement: achievement)
@@ -139,11 +154,12 @@ struct AchievementDetailView: View {
             VStack(spacing: 6) {
                 Text(achievement.title)
                     .font(.system(size: 26, weight: .black, design: .rounded))
+                    .foregroundStyle(ink)
                     .multilineTextAlignment(.center)
 
                 Text(achievement.description)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(softInk)
                     .multilineTextAlignment(.center)
             }
 
@@ -158,23 +174,27 @@ struct AchievementDetailView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
+            .background(Color.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color(red: 0.74, green: 0.42, blue: 0.22).opacity(0.22), lineWidth: 1)
+            )
 
             Spacer(minLength: 0)
         }
         .padding(22)
         .background(Color(red: 0.98, green: 0.91, blue: 0.80))
+        .preferredColorScheme(.light)
     }
 
     private func labeledRow(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label.uppercased())
                 .font(.system(size: 10, weight: .black, design: .rounded))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(softInk)
             Text(value)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
+                .foregroundStyle(ink)
         }
     }
 }
-
