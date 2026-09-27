@@ -181,8 +181,6 @@ struct CollectionCharacterProfileView: View {
         ZStack(alignment: .bottom) {
             ProfileCharacterArtwork(character: character)
                 .frame(width: width, height: max(430, min(width * 1.18, 560)) + safeTop)
-                .scaleEffect(1.38, anchor: .center)
-                .offset(y: max(42, safeTop + 24))
                 .clipped()
                 .overlay(
                     LinearGradient(
@@ -605,9 +603,21 @@ private struct ProfileCharacterArtwork: View {
 
     var body: some View {
         if UIImage(named: character.artworkAssetName) != nil {
-            Image(character.artworkAssetName)
-                .resizable()
-                .scaledToFill()
+            ZStack {
+                Image(character.artworkAssetName)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 14)
+                    .scaleEffect(1.08)
+                    .opacity(0.92)
+
+                Image(character.artworkAssetName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(.top, 54)
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 54)
+            }
         } else {
             RoundedRectangle(cornerRadius: 30)
                 .fill(Color(red: 0.86, green: 0.58, blue: 0.38).gradient)
