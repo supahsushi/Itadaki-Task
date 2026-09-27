@@ -22,7 +22,7 @@ struct CollectionCharacterDefinition: Identifiable, Equatable {
             about: "Salmon is the resident food tester of the group, headband on, notepad in hand, making sure every bite is fresh, happy, and truly worth serving.",
             personality: "Cheerful • Curious • Food-obsessed • Helpful",
             loves: "Trying new sushi • Taste testing • Discovering new flavors • Sharing good food",
-            funFact: "Salmon takes his job very seriously, but somehow his quality control usually requires a second bite.",
+            funFact: "Salmon takes his job very seriously, but somehow his “quality control” usually requires a second bite.",
             artworkAssetName: "SalmonTheFoodTester",
             sourceArtworkFilename: "02. Salmon the food tester.png",
             introduction: "Salmon is here to taste-test the good momentum."
@@ -35,7 +35,7 @@ struct CollectionCharacterDefinition: Identifiable, Equatable {
             about: "Tuna is the gamer of the group, headset on, controller ready, always somewhere between one more level and one more snack.",
             personality: "Playful • Competitive • Focused • Laid-back",
             loves: "Video games • Late-night gaming • Snacks • Playing with friends",
-            funFact: "Tuna always says one more game. Nobody believes him anymore.",
+            funFact: "Tuna always says “one more game.” Nobody believes him anymore.",
             artworkAssetName: "TunaTheGamer",
             sourceArtworkFilename: "01. Tuna the gamer.png",
             introduction: "Tuna just joined your party at the counter."

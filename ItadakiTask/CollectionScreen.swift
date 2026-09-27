@@ -139,13 +139,17 @@ struct CollectionCharacterProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var ink: Color {
-        Color(red: 0.13, green: 0.08, blue: 0.05)
-    }
+    private let ink = Color(red: 0.19, green: 0.11, blue: 0.06)
+    private let paper = Color(red: 0.99, green: 0.92, blue: 0.84)
+    private let paperLight = Color(red: 1.0, green: 0.96, blue: 0.91)
+    private let paperEdge = Color(red: 0.82, green: 0.58, blue: 0.40)
 
-    private var softInk: Color {
-        Color(red: 0.42, green: 0.31, blue: 0.23)
-    }
+    /// Room above the artwork for the back button, so it never covers the logo.
+    private let heroButtonRow: CGFloat = 62
+    /// How far the name plaque straddles the hero backdrop and the paper page.
+    private let plaqueOverlap: CGFloat = 48
+    private let maxArtworkWidth: CGFloat = 820
+    private let maxPageWidth: CGFloat = 640
 
     var body: some View {
         GeometryReader { proxy in
@@ -153,259 +157,463 @@ struct CollectionCharacterProfileView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
                         profileHero(width: proxy.size.width, safeTop: proxy.safeAreaInsets.top)
-                        profileDetails
+                        profilePage(width: proxy.size.width, safeBottom: proxy.safeAreaInsets.bottom)
+                            .padding(.top, -plaqueOverlap)
                     }
                 }
                 .ignoresSafeArea()
-                .background(profileBackground.ignoresSafeArea())
+                .background(paper.ignoresSafeArea())
 
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 24, weight: .black))
+                        .font(.system(size: 21, weight: .black))
                         .foregroundStyle(Color(red: 0.24, green: 0.12, blue: 0.06))
-                        .frame(width: 54, height: 54)
-                        .background(Circle().fill(Color(red: 1.0, green: 0.90, blue: 0.75)))
-                        .overlay(Circle().stroke(Color.white.opacity(0.75), lineWidth: 2))
-                        .shadow(color: .black.opacity(0.20), radius: 8, y: 4)
+                        .frame(width: 48, height: 48)
+                        .background(Circle().fill(Color(red: 1.0, green: 0.92, blue: 0.80)))
+                        .overlay(Circle().stroke(Color.white.opacity(0.80), lineWidth: 2))
+                        .shadow(color: .black.opacity(0.24), radius: 8, y: 4)
                 }
-                .padding(.leading, 20)
-                .padding(.top, proxy.safeAreaInsets.top + 12)
+                .accessibilityLabel("Back")
+                .padding(.leading, 18)
+                .padding(.top, proxy.safeAreaInsets.top + 7)
             }
         }
         .preferredColorScheme(.light)
     }
 
+    // MARK: Hero
+
+    private var artworkAspectRatio: CGFloat {
+        guard let image = UIImage(named: character.artworkAssetName), image.size.width > 0 else { return 0.75 }
+        return image.size.height / image.size.width
+    }
+
     private func profileHero(width: CGFloat, safeTop: CGFloat) -> some View {
-        ZStack(alignment: .bottom) {
+        let artworkWidth = min(width, maxArtworkWidth)
+
+        return VStack(spacing: 0) {
+            Color.clear
+                .frame(height: safeTop + heroButtonRow)
+
+            // The full, uncropped artwork: logo, Sushi Series title, and all.
             ProfileCharacterArtwork(character: character)
-                .frame(width: width, height: max(430, min(width * 1.18, 560)) + safeTop)
-                .clipped()
-                .overlay(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.02),
-                            Color.black.opacity(0.04),
-                            Color(red: 0.24, green: 0.10, blue: 0.03).opacity(0.74)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(alignment: .topLeading) {
-                    blossomBranch
-                        .padding(.top, safeTop + 48)
-                        .padding(.leading, 14)
-                }
-                .overlay(alignment: .topTrailing) {
-                    Text("✦")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.25))
-                        .shadow(color: .white.opacity(0.60), radius: 5)
-                        .padding(.top, safeTop + 102)
-                        .padding(.trailing, 30)
-                }
+                .frame(width: artworkWidth, height: artworkWidth * artworkAspectRatio)
+                .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
 
-            VStack(spacing: 8) {
-                namePlaque(width: width)
-
-                Text("\"\(character.quote)\"")
-                    .font(.system(size: min(19, width * 0.047), weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.25, green: 0.13, blue: 0.07))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: min(width - 42, 620))
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(red: 1.0, green: 0.94, blue: 0.78).opacity(0.92))
-                    )
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: "seal.fill")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(Color(red: 1.0, green: 0.42, blue: 0.51).opacity(0.42))
-                            .offset(x: -14, y: 8)
-                    }
-                    .overlay(alignment: .bottomLeading) {
-                        blossom(size: 18)
-                            .offset(x: 26, y: 12)
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        blossom(size: 18)
-                            .offset(x: -24, y: 14)
-                    }
-            }
-            .padding(.horizontal, 18)
-            .padding(.bottom, -54)
+            Color.clear
+                .frame(height: plaqueOverlap + 14)
         }
-        .padding(.bottom, 70)
+        .frame(width: width)
+        .background { heroBackdrop }
+        // Decorations stay inside the button row so they never cover the artwork.
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 14) {
+                Text("✦")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.80, blue: 0.35))
+                    .shadow(color: .white.opacity(0.70), radius: 5)
+                blossom(size: 22)
+                blossomCluster(scale: 0.9)
+            }
+            .padding(.top, safeTop + 16)
+            .padding(.trailing, 18)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+        }
     }
 
-    private func namePlaque(width: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.68, green: 0.35, blue: 0.14),
-                            Color(red: 0.46, green: 0.21, blue: 0.08)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(height: 86)
-                .shadow(color: .black.opacity(0.20), radius: 10, y: 5)
-
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(Color(red: 0.32, green: 0.14, blue: 0.04).opacity(0.26), lineWidth: 2)
-                .padding(.horizontal, 3)
-                .frame(height: 80)
-
-            HStack {
-                blossomCluster(scale: 0.70)
-                Spacer()
-                Text("🍣")
-                    .font(.system(size: 44))
-                    .rotationEffect(.degrees(-9))
-                    .shadow(color: .black.opacity(0.22), radius: 5, y: 3)
+    /// A soft, blurred copy of the artwork fills the space around it so the
+    /// header, the artwork, and the page read as one continuous scene.
+    private var heroBackdrop: some View {
+        Color(red: 0.36, green: 0.19, blue: 0.10)
+            .overlay {
+                if UIImage(named: character.artworkAssetName) != nil {
+                    Image(character.artworkAssetName)
+                        .resizable()
+                        .scaledToFill()
+                        .blur(radius: 22)
+                        .scaleEffect(1.15)
+                        .opacity(0.9)
+                }
             }
-            .padding(.horizontal, 18)
-
-            VStack(spacing: -2) {
-                Text(character.name)
-                    .font(.system(size: min(52, width * 0.13), weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.95, green: 0.39, blue: 0.18))
-                    .shadow(color: .white, radius: 0, x: 0, y: 3)
-                    .shadow(color: .white, radius: 0, x: 3, y: 0)
-                    .shadow(color: .white, radius: 0, x: -3, y: 0)
-                    .shadow(color: .white, radius: 0, x: 0, y: -3)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-
-                Text(character.role)
-                    .font(.system(size: min(25, width * 0.061), weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.93, green: 0.19, blue: 0.42))
-                    .shadow(color: .white.opacity(0.92), radius: 0, x: 0, y: 2)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.70)
-            }
-        }
-        .frame(maxWidth: min(width - 48, 620))
-    }
-
-    private var profileDetails: some View {
-        VStack(spacing: 18) {
-            profileSection("About", character.about, accent: .about)
-            profileSection("Personality", character.personality, accent: .personality)
-            profileSection("Loves", character.loves, accent: .loves)
-            profileSection("Fun Fact", character.funFact, accent: .funFact)
-            profileSection("First Visited", firstVisitedText, accent: .firstVisited)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 18)
-        .padding(.bottom, 38)
-        .background(
-            ZStack {
+            .overlay(
                 LinearGradient(
-                    colors: [
-                        Color(red: 1.0, green: 0.91, blue: 0.73).opacity(0.0),
-                        Color(red: 1.0, green: 0.93, blue: 0.78).opacity(0.98),
-                        Color(red: 0.99, green: 0.83, blue: 0.62)
+                    stops: [
+                        .init(color: Color(red: 1.0, green: 0.88, blue: 0.76).opacity(0.62), location: 0),
+                        .init(color: Color(red: 1.0, green: 0.88, blue: 0.76).opacity(0.0), location: 0.14),
+                        .init(color: Color(red: 0.24, green: 0.10, blue: 0.03).opacity(0.0), location: 0.70),
+                        .init(color: Color(red: 0.24, green: 0.10, blue: 0.03).opacity(0.45), location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .padding(.top, -118)
+            )
+            .clipped()
+    }
 
-                ForEach(0..<8, id: \.self) { index in
-                    Image(systemName: "water.waves")
-                        .font(.system(size: 30, weight: .black))
-                        .foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.32).opacity(0.08))
-                        .offset(x: CGFloat((index % 2 == 0 ? -1 : 1) * (92 + index * 11)), y: CGFloat(index * 74 - 20))
-                }
+    // MARK: Page
+
+    private func profilePage(width: CGFloat, safeBottom: CGFloat) -> some View {
+        VStack(spacing: 12) {
+            namePlaque(width: width)
+                .zIndex(1)
+
+            quoteNote(width: width)
+
+            VStack(spacing: 18) {
+                profileSection("About", character.about, accent: .about)
+                profileSection("Personality", character.personality, accent: .personality)
+                profileSection("Loves", character.loves, accent: .loves)
+                profileSection("Fun Fact", character.funFact, accent: .funFact)
+                profileSection("First Visited", firstVisitedText, accent: .firstVisited)
             }
-        )
-        .overlay(alignment: .top) {
-            HStack(spacing: 16) {
-                blossom(size: 19)
-                Image(systemName: "water.waves")
-                    .font(.system(size: 28, weight: .black))
-                    .foregroundStyle(Color(red: 0.89, green: 0.30, blue: 0.26).opacity(0.16))
-                blossom(size: 15)
-            }
-            .offset(y: -8)
-            .allowsHitTesting(false)
+            .frame(maxWidth: maxPageWidth)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+        }
+        .padding(.bottom, safeBottom + 34)
+        .frame(width: width)
+        .background(alignment: .top) {
+            paperPage
+                .padding(.top, plaqueOverlap)
         }
     }
 
-    private var profileBackground: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 1.0, green: 0.91, blue: 0.76),
-                    Color(red: 0.99, green: 0.84, blue: 0.62),
-                    Color(red: 0.96, green: 0.71, blue: 0.50)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+    private var paperPage: some View {
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+
+        return ZStack {
+            shape.fill(paper)
+
+            SeigaihaPattern(background: paper, line: Color(red: 0.93, green: 0.55, blue: 0.45).opacity(0.13))
+                .clipShape(shape)
 
             VStack {
-                HStack {
-                    decorativeSakura
+                HStack(alignment: .top) {
+                    blossomCluster(scale: 0.9)
+                        .opacity(0.8)
+                        .offset(x: 6, y: 34)
                     Spacer()
-                    decorativeSakura
+                    blossomCluster(scale: 0.9)
+                        .opacity(0.8)
+                        .offset(x: -6, y: 34)
                 }
-                .padding(.horizontal, 30)
-                .padding(.top, 32)
-
                 Spacer()
-
-                HStack {
-                    decorativeSakura.opacity(0.65)
+                HStack(alignment: .bottom) {
+                    blossom(size: 34)
+                        .opacity(0.35)
                     Spacer()
-                    decorativeSakura.opacity(0.65)
+                    ZStack {
+                        blossom(size: 64).opacity(0.28)
+                        blossom(size: 30).opacity(0.36).offset(x: -46, y: 20)
+                    }
+                    .offset(x: 14, y: 10)
                 }
-                .padding(.horizontal, 34)
-                .padding(.bottom, 42)
+                .padding(.horizontal, 4)
+                .padding(.bottom, 4)
             }
+            .clipShape(shape)
             .allowsHitTesting(false)
         }
+        .overlay(
+            shape
+                .stroke(Color.white.opacity(0.65), lineWidth: 2)
+        )
+        .shadow(color: Color(red: 0.30, green: 0.12, blue: 0.04).opacity(0.30), radius: 10, y: -3)
     }
 
-    private var decorativeSakura: some View {
-        Image(systemName: "seal.fill")
-            .font(.system(size: 32, weight: .black))
-            .foregroundStyle(Color(red: 1.0, green: 0.48, blue: 0.56).opacity(0.24))
-            .rotationEffect(.degrees(18))
+    // MARK: Name plaque and quote
+
+    private func namePlaque(width: CGFloat) -> some View {
+        let plaqueWidth = min(width - 36, 560)
+        let nameSize = min(56, width * 0.135)
+
+        return ZStack {
+            WoodPlankShape()
+                .fill(woodGradient)
+                .overlay(WoodGrain().clipShape(WoodPlankShape()))
+                .overlay(
+                    WoodPlankShape()
+                        .stroke(Color(red: 0.30, green: 0.13, blue: 0.04).opacity(0.55), lineWidth: 2)
+                )
+                .frame(height: 94)
+                .shadow(color: .black.opacity(0.30), radius: 10, y: 6)
+
+            VStack(spacing: -4) {
+                OutlinedText(
+                    text: character.name,
+                    font: .system(size: nameSize, weight: .black, design: .rounded),
+                    fill: Color(red: 0.96, green: 0.44, blue: 0.15),
+                    outline: .white,
+                    width: 3.5
+                )
+                .shadow(color: Color(red: 0.36, green: 0.14, blue: 0.04).opacity(0.55), radius: 0, x: 0, y: 3)
+
+                OutlinedText(
+                    text: character.role,
+                    font: .system(size: min(26, width * 0.062), weight: .black, design: .rounded),
+                    fill: Color(red: 0.91, green: 0.18, blue: 0.40),
+                    outline: .white,
+                    width: 2.5
+                )
+                .shadow(color: Color(red: 0.36, green: 0.14, blue: 0.04).opacity(0.45), radius: 0, x: 0, y: 2)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+            .padding(.horizontal, 74)
+            .offset(y: -10)
+
+            HStack {
+                blossomCluster(scale: 0.78)
+                    .offset(x: -4, y: 22)
+                Spacer()
+                plateSushi
+                    .offset(x: 18, y: -4)
+            }
+            .padding(.horizontal, 10)
+        }
+        .frame(width: plaqueWidth)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(character.name), \(character.role)")
+        .accessibilityAddTraits(.isHeader)
     }
+
+    private var plateSushi: some View {
+        ZStack {
+            Ellipse()
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.22, green: 0.20, blue: 0.20), Color(red: 0.05, green: 0.05, blue: 0.05)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 76, height: 30)
+                .overlay(Ellipse().stroke(Color.white.opacity(0.28), lineWidth: 1.5))
+                .offset(y: 16)
+            Text("🍣")
+                .font(.system(size: 50))
+                .rotationEffect(.degrees(-8))
+        }
+        .shadow(color: .black.opacity(0.30), radius: 5, y: 3)
+    }
+
+    private func quoteNote(width: CGFloat) -> some View {
+        Text("\u{201C}\(character.quote)\u{201D}")
+            .font(.custom("Noteworthy-Bold", size: min(20, width * 0.048)))
+            .foregroundStyle(ink)
+            .multilineTextAlignment(.center)
+            .lineSpacing(1)
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: min(width - 60, 560))
+            .background(
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.97, blue: 0.88), Color(red: 0.99, green: 0.92, blue: 0.78)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(red: 0.40, green: 0.20, blue: 0.08).opacity(0.18), radius: 5, y: 3)
+            )
+            .overlay(alignment: .bottomLeading) {
+                blossom(size: 22)
+                    .offset(x: -8, y: 9)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                blossom(size: 26)
+                    .offset(x: 9, y: 11)
+            }
+    }
+
+    // MARK: Sections
 
     private var firstVisitedText: String {
         guard let date = character.dateFirstMet else { return "Not met yet" }
         return date.formatted(date: .long, time: .omitted)
     }
 
-    private var blossomBranch: some View {
-        ZStack {
-            Capsule()
-                .fill(Color(red: 0.37, green: 0.17, blue: 0.08).opacity(0.52))
-                .frame(width: 150, height: 7)
-                .rotationEffect(.degrees(-24))
-                .offset(x: 26, y: 5)
+    private func profileSection(_ title: String, _ value: String, accent: ProfileAccent) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: -14) {
+                sectionIcon(accent)
+                    .frame(width: 50, height: 50)
+                    .zIndex(1)
+                    .accessibilityHidden(true)
 
-            blossom(size: 35).offset(x: 8, y: -12)
-            blossom(size: 28).offset(x: 45, y: -23)
-            blossom(size: 23).offset(x: 76, y: -6)
-            blossom(size: 30).offset(x: 104, y: -28)
-            blossom(size: 20).offset(x: 128, y: -2)
+                woodLabel(title)
+            }
+            .padding(.leading, 6)
+            .padding(.top, -8)
+
+            Text(value)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(ink)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 22)
+                .padding(.trailing, 92)
         }
-        .frame(width: 170, height: 72, alignment: .topLeading)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .background(alignment: .trailing) {
+            sectionDecoration(accent: accent)
+                .padding(.trailing, 14)
+                .padding(.top, 18)
+                .accessibilityHidden(true)
+                .allowsHitTesting(false)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(paperLight.opacity(0.72))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.75), lineWidth: 1.5)
+                        .padding(3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(paperEdge.opacity(0.42), lineWidth: 1.2)
+                )
+                .shadow(color: Color(red: 0.40, green: 0.20, blue: 0.08).opacity(0.10), radius: 5, y: 3)
+        )
+        .accessibilityElement(children: .combine)
     }
+
+    private var woodGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.72, green: 0.42, blue: 0.20),
+                Color(red: 0.58, green: 0.31, blue: 0.13),
+                Color(red: 0.44, green: 0.22, blue: 0.08)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func woodLabel(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.system(size: 18, weight: .black, design: .rounded))
+            .foregroundStyle(Color(red: 1.0, green: 0.97, blue: 0.92))
+            .tracking(0.8)
+            .shadow(color: Color(red: 0.25, green: 0.10, blue: 0.02).opacity(0.75), radius: 0, x: 0, y: 1.5)
+            .padding(.leading, 26)
+            .padding(.trailing, 30)
+            .padding(.vertical, 7)
+            .background(
+                WoodTabShape()
+                    .fill(woodGradient)
+                    .overlay(WoodGrain().clipShape(WoodTabShape()))
+                    .overlay(
+                        WoodTabShape()
+                            .stroke(Color(red: 0.30, green: 0.13, blue: 0.04).opacity(0.45), lineWidth: 1.2)
+                    )
+                    .shadow(color: .black.opacity(0.20), radius: 3, y: 2)
+            )
+    }
+
+    @ViewBuilder
+    private func sectionIcon(_ accent: ProfileAccent) -> some View {
+        switch accent {
+        case .about:
+            MakiIcon()
+                .frame(width: 44, height: 44)
+                .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
+        case .personality:
+            iconEmoji("🌸")
+        case .loves:
+            iconEmoji("❤️")
+        case .funFact:
+            iconEmoji("⭐")
+        case .firstVisited:
+            iconEmoji("📅")
+        }
+    }
+
+    private func iconEmoji(_ emoji: String) -> some View {
+        Text(emoji)
+            .font(.system(size: 38))
+            .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
+    }
+
+    @ViewBuilder
+    private func sectionDecoration(accent: ProfileAccent) -> some View {
+        switch accent {
+        case .about:
+            ZStack {
+                Circle()
+                    .stroke(Color(red: 0.92, green: 0.40, blue: 0.36).opacity(0.28), lineWidth: 2.5)
+                    .frame(width: 70, height: 70)
+                Image(systemName: "face.smiling")
+                    .font(.system(size: 44, weight: .regular))
+                    .foregroundStyle(Color(red: 0.92, green: 0.40, blue: 0.36).opacity(0.34))
+            }
+        case .personality:
+            ZStack {
+                Text("🍶")
+                    .font(.system(size: 44))
+                    .rotationEffect(.degrees(8))
+                Text("♥")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.94, green: 0.30, blue: 0.42))
+                    .offset(x: -30, y: -12)
+                Text("♥")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.94, green: 0.30, blue: 0.42))
+                    .offset(x: 30, y: -18)
+            }
+        case .loves:
+            ZStack {
+                Text("🍣")
+                    .font(.system(size: 54))
+                    .rotationEffect(.degrees(-10))
+                Text("✦")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.76, blue: 0.16))
+                    .offset(x: -36, y: -14)
+                Text("✦")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.76, blue: 0.16))
+                    .offset(x: 34, y: -24)
+            }
+        case .funFact:
+            ZStack {
+                Image(systemName: "face.smiling")
+                    .font(.system(size: 46, weight: .regular))
+                    .foregroundStyle(Color(red: 0.38, green: 0.20, blue: 0.10).opacity(0.62))
+                ForEach(0..<3, id: \.self) { index in
+                    Capsule()
+                        .fill(Color(red: 0.94, green: 0.36, blue: 0.40).opacity(0.70))
+                        .frame(width: 10, height: 2.5)
+                        .rotationEffect(.degrees(Double(index - 1) * 28))
+                        .offset(x: -36, y: CGFloat(index - 1) * 10)
+                }
+            }
+        case .firstVisited:
+            VStack(spacing: 0) {
+                Text("寿司チャンプルー")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                Text("Oishii Sushi!")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+            }
+            .foregroundStyle(Color(red: 0.92, green: 0.34, blue: 0.34).opacity(0.46))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(red: 0.92, green: 0.34, blue: 0.34).opacity(0.40), lineWidth: 2)
+            )
+            .rotationEffect(.degrees(-4))
+        }
+    }
+
+    // MARK: Blossoms
 
     private func blossom(size: CGFloat) -> some View {
         ZStack {
@@ -442,174 +650,6 @@ struct CollectionCharacterProfileView: View {
         }
         .frame(width: 52 * scale, height: 38 * scale)
     }
-
-    private func profileSection(_ title: String, _ value: String, accent: ProfileAccent) -> some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(red: 1.0, green: 0.95, blue: 0.83).opacity(0.92))
-                .overlay(alignment: .topTrailing) {
-                    Image(systemName: "water.waves")
-                        .font(.system(size: 42, weight: .black))
-                        .foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.32).opacity(0.09))
-                        .padding(.top, 10)
-                        .padding(.trailing, 24)
-                }
-                .overlay(alignment: .trailing) {
-                    sectionDecoration(accent: accent)
-                        .padding(.trailing, 16)
-                        .padding(.top, 26)
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(Color(red: 0.77, green: 0.43, blue: 0.22).opacity(0.36), lineWidth: 1.5)
-                )
-                .shadow(color: Color(red: 0.38, green: 0.18, blue: 0.08).opacity(0.12), radius: 7, y: 4)
-
-            VStack(alignment: .leading, spacing: 13) {
-                Text(value)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(ink)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 10)
-                    .padding(.trailing, 72)
-            }
-            .padding(.horizontal, 15)
-            .padding(.top, 44)
-            .padding(.bottom, 17)
-
-            HStack(spacing: 7) {
-                sectionIcon(accent)
-                    .zIndex(1)
-
-                woodLabel(title)
-                    .offset(x: -5)
-            }
-            .offset(x: 14, y: -13)
-
-            if accent == .firstVisited {
-                blossomCluster(scale: 0.62)
-                    .offset(x: -4, y: 82)
-            }
-        }
-    }
-
-    private func woodLabel(_ title: String) -> some View {
-        Text(title.uppercased())
-            .font(.system(size: 16, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
-            .tracking(0.7)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.64, green: 0.32, blue: 0.12),
-                                Color(red: 0.35, green: 0.15, blue: 0.05)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            )
-            .shadow(color: .black.opacity(0.18), radius: 3, y: 2)
-    }
-
-    @ViewBuilder
-    private func sectionIcon(_ accent: ProfileAccent) -> some View {
-        switch accent {
-        case .about:
-            emojiBadge("🍣", background: Color(red: 1.0, green: 0.88, blue: 0.66))
-        case .personality:
-            ZStack {
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.82, blue: 0.88))
-                    .frame(width: 38, height: 38)
-                    .overlay(Circle().stroke(Color.white.opacity(0.82), lineWidth: 2))
-                blossom(size: 28)
-            }
-        case .loves:
-            emojiBadge("❤", background: Color(red: 1.0, green: 0.76, blue: 0.78), foreground: Color(red: 0.93, green: 0.12, blue: 0.24))
-        case .funFact:
-            emojiBadge("⭐", background: Color(red: 1.0, green: 0.88, blue: 0.58))
-        case .firstVisited:
-            emojiBadge("🗓️", background: Color(red: 1.0, green: 0.86, blue: 0.72))
-        }
-    }
-
-    private func emojiBadge(_ text: String, background: Color, foreground: Color? = nil) -> some View {
-        Text(text)
-            .font(.system(size: 22, weight: .black, design: .rounded))
-            .foregroundStyle(foreground ?? ink)
-            .frame(width: 38, height: 38)
-            .background(Circle().fill(background))
-            .overlay(Circle().stroke(Color.white.opacity(0.82), lineWidth: 2))
-            .shadow(color: .black.opacity(0.14), radius: 4, y: 2)
-    }
-
-    @ViewBuilder
-    private func sectionDecoration(accent: ProfileAccent) -> some View {
-        switch accent {
-        case .about:
-            ZStack {
-                Image(systemName: "face.smiling")
-                    .font(.system(size: 52, weight: .black))
-                    .foregroundStyle(Color(red: 0.92, green: 0.32, blue: 0.24).opacity(0.22))
-                Image(systemName: "mustache.fill")
-                    .font(.system(size: 30, weight: .black))
-                    .foregroundStyle(Color(red: 0.92, green: 0.32, blue: 0.24).opacity(0.14))
-                    .offset(y: -22)
-            }
-        case .personality:
-            ZStack {
-                Text("🍶")
-                    .font(.system(size: 43))
-                    .rotationEffect(.degrees(10))
-                Text("♥")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.94, green: 0.22, blue: 0.36))
-                    .offset(x: -28, y: -18)
-                Text("♥")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.94, green: 0.22, blue: 0.36))
-                    .offset(x: -16, y: -31)
-            }
-        case .loves:
-            ZStack {
-                Text("🍣")
-                    .font(.system(size: 52))
-                    .rotationEffect(.degrees(-10))
-                Text("✦")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.12))
-                    .offset(x: -34, y: -16)
-                Text("✦")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.12))
-                    .offset(x: 33, y: -21)
-            }
-        case .funFact:
-            Image(systemName: "face.smiling")
-                .font(.system(size: 50, weight: .black))
-                .foregroundStyle(Color(red: 0.44, green: 0.21, blue: 0.08).opacity(0.38))
-        case .firstVisited:
-            VStack(spacing: 0) {
-                Text("寿司チャンプルー")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                Text("Oishii Sushi!")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-            }
-            .foregroundStyle(Color(red: 0.92, green: 0.30, blue: 0.29).opacity(0.42))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color(red: 0.92, green: 0.30, blue: 0.29).opacity(0.36), lineWidth: 2)
-            )
-        }
-    }
 }
 
 private enum ProfileAccent {
@@ -625,21 +665,10 @@ private struct ProfileCharacterArtwork: View {
 
     var body: some View {
         if UIImage(named: character.artworkAssetName) != nil {
-            ZStack {
-                Image(character.artworkAssetName)
-                    .resizable()
-                    .scaledToFill()
-                    .blur(radius: 14)
-                    .scaleEffect(1.08)
-                    .opacity(0.92)
-
-                Image(character.artworkAssetName)
-                    .resizable()
-                    .scaledToFit()
-                    .padding(.top, 54)
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 54)
-            }
+            Image(character.artworkAssetName)
+                .resizable()
+                .scaledToFit()
+                .accessibilityLabel("\(character.name), \(character.role) artwork")
         } else {
             RoundedRectangle(cornerRadius: 30)
                 .fill(Color(red: 0.86, green: 0.58, blue: 0.38).gradient)
@@ -648,6 +677,162 @@ private struct ProfileCharacterArtwork: View {
                         .font(.system(size: 58, weight: .black))
                         .foregroundStyle(.white.opacity(0.86))
                 }
+        }
+    }
+}
+
+/// Text with a solid sticker-style outline, like the lettering on the artwork.
+private struct OutlinedText: View {
+    var text: String
+    var font: Font
+    var fill: Color
+    var outline: Color
+    var width: CGFloat
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<12, id: \.self) { index in
+                let angle = Double(index) * .pi / 6
+                Text(text)
+                    .font(font)
+                    .foregroundStyle(outline)
+                    .offset(x: cos(angle) * width, y: sin(angle) * width)
+            }
+            Text(text)
+                .font(font)
+                .foregroundStyle(fill)
+        }
+    }
+}
+
+/// A wooden sign with roughly cut ends, used for the name plaque.
+private struct WoodPlankShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        var path = Path()
+        path.move(to: CGPoint(x: 14, y: 3))
+        path.addLine(to: CGPoint(x: w - 12, y: 0))
+        path.addLine(to: CGPoint(x: w, y: h * 0.20))
+        path.addLine(to: CGPoint(x: w - 7, y: h * 0.52))
+        path.addLine(to: CGPoint(x: w - 1, y: h * 0.84))
+        path.addLine(to: CGPoint(x: w - 14, y: h))
+        path.addLine(to: CGPoint(x: 10, y: h - 3))
+        path.addLine(to: CGPoint(x: 0, y: h * 0.74))
+        path.addLine(to: CGPoint(x: 7, y: h * 0.44))
+        path.addLine(to: CGPoint(x: 0, y: h * 0.16))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// A wooden heading tab with a notched, hand-cut right end.
+private struct WoodTabShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        var path = Path()
+        path.move(to: CGPoint(x: 6, y: 2))
+        path.addLine(to: CGPoint(x: w - 14, y: 0))
+        path.addLine(to: CGPoint(x: w - 1, y: h * 0.30))
+        path.addLine(to: CGPoint(x: w - 9, y: h * 0.52))
+        path.addLine(to: CGPoint(x: w, y: h * 0.80))
+        path.addLine(to: CGPoint(x: w - 16, y: h))
+        path.addLine(to: CGPoint(x: 6, y: h - 1))
+        path.addQuadCurve(to: CGPoint(x: 6, y: 2), control: CGPoint(x: -4, y: h * 0.5))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Faint grain lines drawn over the wood gradient.
+private struct WoodGrain: View {
+    var body: some View {
+        Canvas { context, size in
+            let lineCount = max(3, Int(size.height / 9))
+            for index in 0..<lineCount {
+                let y = size.height * (CGFloat(index) + 0.5) / CGFloat(lineCount)
+                let wobble = CGFloat(index % 2 == 0 ? 2.2 : -1.8)
+                var path = Path()
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addCurve(
+                    to: CGPoint(x: size.width, y: y + wobble * 0.5),
+                    control1: CGPoint(x: size.width * 0.33, y: y - wobble),
+                    control2: CGPoint(x: size.width * 0.66, y: y + wobble)
+                )
+                let tone = index % 3 == 0 ? Color.white.opacity(0.10) : Color.black.opacity(0.12)
+                context.stroke(path, with: .color(tone), lineWidth: 1)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// Japanese seigaiha (blue ocean wave) pattern for the paper page.
+private struct SeigaihaPattern: View {
+    var background: Color
+    var line: Color
+    var radius: CGFloat = 22
+
+    var body: some View {
+        Canvas { context, size in
+            let columnStep = radius * 2
+            let rowStep = radius * 0.5
+            var row = 0
+            var y: CGFloat = 0
+
+            while y < size.height + radius {
+                var x: CGFloat = row.isMultiple(of: 2) ? 0 : radius
+                while x < size.width + radius {
+                    let center = CGPoint(x: x, y: y)
+                    let outer = Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+                    context.fill(outer, with: .color(background))
+                    for ring in 0..<4 {
+                        let ringRadius = radius * (1 - CGFloat(ring) * 0.23)
+                        var arc = Path()
+                        arc.addArc(center: center, radius: ringRadius, startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false)
+                        context.stroke(arc, with: .color(line), lineWidth: 1.1)
+                    }
+                    x += columnStep
+                }
+                y += rowStep
+                row += 1
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// A little maki roll for the About heading.
+private struct MakiIcon: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let size = min(proxy.size.width, proxy.size.height)
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.12, green: 0.18, blue: 0.12))
+                Circle()
+                    .stroke(Color(red: 0.30, green: 0.40, blue: 0.24), lineWidth: size * 0.04)
+                    .padding(size * 0.03)
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.99, blue: 0.95))
+                    .padding(size * 0.12)
+                ForEach(0..<10, id: \.self) { index in
+                    let angle = Double(index) * .pi / 5
+                    Circle()
+                        .fill(Color(red: 0.90, green: 0.88, blue: 0.82))
+                        .frame(width: size * 0.08, height: size * 0.08)
+                        .offset(x: cos(angle) * size * 0.27, y: sin(angle) * size * 0.27)
+                }
+                Circle()
+                    .fill(Color(red: 0.97, green: 0.47, blue: 0.24))
+                    .frame(width: size * 0.30, height: size * 0.30)
+                Circle()
+                    .fill(Color(red: 0.45, green: 0.72, blue: 0.28))
+                    .frame(width: size * 0.12, height: size * 0.12)
+                    .offset(x: size * 0.10, y: -size * 0.08)
+            }
+            .frame(width: size, height: size)
         }
     }
 }
