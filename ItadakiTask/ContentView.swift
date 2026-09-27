@@ -1546,11 +1546,13 @@ struct AddTaskSheet: View {
 
     private func pickerSheet<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
-            VStack {
+            VStack(spacing: 0) {
                 content()
-                    .padding()
-                Spacer(minLength: 0)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 12)
+                    .padding(.bottom, 34)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1562,7 +1564,7 @@ struct AddTaskSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.fraction(0.62), .large])
     }
 
     private static func defaultDueDate(for daypart: Daypart) -> Date {
