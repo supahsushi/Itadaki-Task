@@ -363,6 +363,7 @@ struct ContentView: View {
     @AppStorage("sushiUnlockedAchievements") private var sushiUnlockedAchievements = ""
     @AppStorage("sushiAchievementStates") private var sushiAchievementStates = ""
     @AppStorage("sushiPendingAchievementUnlocks") private var sushiPendingAchievementUnlocks = ""
+    @AppStorage("sushiCollectedAchievementUnlocks") private var sushiCollectedAchievementUnlocks = ""
     @AppStorage("sushiAskedHealthKit") private var hasAskedHealthKit = false
 
     @State private var tasks: [SushiTask] = []
@@ -371,6 +372,7 @@ struct ContentView: View {
     @State private var showingNamePrompt = false
     @State private var draftName = ""
     @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
+    @State private var currentAchievementUnlock: Achievement?
 
     private let daypart = Daypart()
 
@@ -448,6 +450,7 @@ struct ContentView: View {
             resetMealIfNeeded()
             migrateLegacyAchievementUnlocksIfNeeded()
             evaluateAchievements()
+            presentNextPendingAchievementUnlockIfNeeded()
             requestHealthKitAuthorizationIfNeeded()
         }
         .fullScreenCover(isPresented: $showingAddTask) {
@@ -464,6 +467,11 @@ struct ContentView: View {
                 achievements: achievements,
                 pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks)
             )
+        }
+        .fullScreenCover(item: $currentAchievementUnlock) { achievement in
+            GachaponUnlockView(achievement: achievement) {
+                collectAchievementUnlock(achievement)
+            }
         }
         .alert("What is the customer's name?", isPresented: $showingNamePrompt) {
             TextField("Customer name", text: $draftName)
@@ -553,6 +561,7 @@ struct ContentView: View {
             LocalNotificationScheduler.shared.cancelReminder(for: tasks[index])
             sushiEatenToday = min(sushiEatenToday + 1, mealLimit)
             recordAchievementProgress(for: tasks[index], completedAt: completedAt)
+            presentNextPendingAchievementUnlockIfNeeded()
             recentlyEatenTaskIDs.insert(task.id)
             saveTasks()
         }
@@ -678,6 +687,37 @@ struct ContentView: View {
         sushiAchievementStates = Self.encoded(result.states)
         sushiPendingAchievementUnlocks = Self.encoded(result.pendingUnlockIDs)
         sushiUnlockedAchievements = Self.encoded(Set(result.states.filter(\.isUnlocked).map(\.id)))
+    }
+
+    private func presentNextPendingAchievementUnlockIfNeeded() {
+        guard currentAchievementUnlock == nil else { return }
+        guard !showingAchievements else { return }
+
+        let collectedIDs = decodedStringSet(sushiCollectedAchievementUnlocks)
+        let pendingIDs = decodedStringArray(sushiPendingAchievementUnlocks)
+
+        guard let nextID = pendingIDs.first(where: { !collectedIDs.contains($0) }),
+              let achievement = achievements.first(where: { $0.id == nextID && $0.isUnlocked }) else {
+            return
+        }
+
+        DispatchQueue.main.async {
+            currentAchievementUnlock = achievement
+        }
+    }
+
+    private func collectAchievementUnlock(_ achievement: Achievement) {
+        var collectedIDs = decodedStringSet(sushiCollectedAchievementUnlocks)
+        collectedIDs.insert(achievement.id)
+        sushiCollectedAchievementUnlocks = Self.encoded(collectedIDs)
+
+        let remainingPendingIDs = decodedStringArray(sushiPendingAchievementUnlocks).filter { $0 != achievement.id }
+        sushiPendingAchievementUnlocks = Self.encoded(remainingPendingIDs)
+        currentAchievementUnlock = nil
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            presentNextPendingAchievementUnlockIfNeeded()
+        }
     }
 
     private func currentStreak(from completedDayKeys: Set<String>, endingAt date: Date) -> Int {
