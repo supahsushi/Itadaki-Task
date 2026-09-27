@@ -1184,6 +1184,8 @@ struct TaskBoardView: View {
     var complete: (SushiTask) -> Void
 
     var body: some View {
+        let boardHeaderClearance: CGFloat = mealIsFull ? 0 : 34
+
         VStack(spacing: 5) {
             if mealIsFull {
                 CustomerFullCard(daypart: daypart)
@@ -1202,7 +1204,8 @@ struct TaskBoardView: View {
                         }
                     }
                 }
-                .padding(.vertical, 1)
+                .padding(.top, boardHeaderClearance)
+                .padding(.bottom, 1)
             }
             .frame(maxHeight: .infinity)
         }
