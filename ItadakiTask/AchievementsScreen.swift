@@ -6,6 +6,9 @@ struct AchievementsScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var selectedAchievement: Achievement?
+    #if DEBUG
+    @State private var replayAchievement: Achievement?
+    #endif
 
     private let columns = [
         GridItem(.adaptive(minimum: 104), spacing: 14)
@@ -16,15 +19,37 @@ struct AchievementsScreen: View {
             ScrollView(showsIndicators: false) {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(achievements) { achievement in
-                        Button {
-                            selectedAchievement = achievement
-                        } label: {
-                            AchievementBadgeCell(
-                                achievement: achievement,
-                                isPendingReveal: pendingUnlockIDs.contains(achievement.id)
-                            )
+                        VStack(spacing: 8) {
+                            Button {
+                                selectedAchievement = achievement
+                            } label: {
+                                AchievementBadgeCell(
+                                    achievement: achievement,
+                                    isPendingReveal: pendingUnlockIDs.contains(achievement.id)
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            #if DEBUG
+                            if achievement.isUnlocked {
+                                Button {
+                                    replayAchievement = achievement
+                                } label: {
+                                    Label("Replay", systemImage: "play.circle.fill")
+                                        .font(.system(size: 12, weight: .black, design: .rounded))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(red: 1.0, green: 0.23, blue: 0.48))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Replay \(achievement.title) gachapon animation")
+                            }
+                            #endif
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(18)
@@ -49,6 +74,13 @@ struct AchievementsScreen: View {
                     .presentationDetents([.medium])
                     .presentationBackground(Color(red: 0.98, green: 0.91, blue: 0.80))
             }
+            #if DEBUG
+            .fullScreenCover(item: $replayAchievement) { achievement in
+                GachaponUnlockView(achievement: achievement) {
+                    replayAchievement = nil
+                }
+            }
+            #endif
         }
         .preferredColorScheme(.light)
     }

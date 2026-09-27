@@ -25,7 +25,7 @@ struct GachaponUnlockView: View {
                     .rotationEffect(.degrees(machineShake ? -1.7 : 1.7), anchor: .center)
                     .offset(x: machineShake ? -5 : 5)
                     .animation(
-                        .easeInOut(duration: 0.08)
+                        .easeInOut(duration: 0.15)
                             .repeatCount(10, autoreverses: true),
                         value: machineShake
                     )
@@ -58,9 +58,9 @@ struct GachaponUnlockView: View {
                 .frame(width: capsuleSize, height: capsuleSize * 0.74)
                 .scaleEffect(capsuleOpens ? 1.1 : capsuleBounces ? 1.08 : 1)
                 .offset(y: capsuleDrops ? landedY - startY : 0)
-                .animation(.interpolatingSpring(stiffness: 120, damping: 11), value: capsuleDrops)
-                .animation(.interpolatingSpring(stiffness: 210, damping: 7), value: capsuleBounces)
-                .animation(.spring(response: 0.42, dampingFraction: 0.72), value: capsuleOpens)
+                .animation(.easeIn(duration: 1.0), value: capsuleDrops)
+                .animation(.interpolatingSpring(stiffness: 95, damping: 8).speed(0.75), value: capsuleBounces)
+                .animation(.spring(response: 0.75, dampingFraction: 0.76), value: capsuleOpens)
 
             BadgeArtwork(achievement: achievement)
                 .frame(width: capsuleSize * 0.96, height: capsuleSize * 0.96)
@@ -69,7 +69,7 @@ struct GachaponUnlockView: View {
                 .scaleEffect(badgeAppears ? 1 : 0.18)
                 .opacity(badgeAppears ? 1 : 0)
                 .offset(y: capsuleDrops ? landedY - startY - capsuleSize * 0.88 : -capsuleSize * 0.88)
-                .animation(.spring(response: 0.58, dampingFraction: 0.62), value: badgeAppears)
+                .animation(.spring(response: 1.0, dampingFraction: 0.66), value: badgeAppears)
         }
         .position(x: size.width * 0.5, y: startY)
     }
@@ -87,7 +87,7 @@ struct GachaponUnlockView: View {
                         y: CGFloat(sin(Double(index) * .pi / 7.0) * Double(size.width * 0.16))
                     )
                     .animation(
-                        .spring(response: 0.48, dampingFraction: 0.54)
+                        .spring(response: 0.82, dampingFraction: 0.58)
                             .delay(Double(index) * 0.018),
                         value: badgeAppears
                     )
@@ -114,7 +114,7 @@ struct GachaponUnlockView: View {
             .multilineTextAlignment(.center)
             .opacity(textAppears ? 1 : 0)
             .offset(y: textAppears ? 0 : 16)
-            .animation(.spring(response: 0.46, dampingFraction: 0.76), value: textAppears)
+            .animation(.spring(response: 0.72, dampingFraction: 0.80), value: textAppears)
 
             Button(action: collect) {
                 Text("Collect")
@@ -171,28 +171,28 @@ struct GachaponUnlockView: View {
         textAppears = false
         canCollect = false
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             machineShake = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.55) {
             knobTurns = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.05) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             capsuleDrops = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.62) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             capsuleBounces = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.05) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.25) {
             capsuleOpens = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.28) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
             badgeAppears = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.62) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.35) {
             textAppears = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.95) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7.1) {
             canCollect = true
         }
     }
@@ -221,7 +221,7 @@ private struct KnobTurnOverlay: View {
                         .stroke(Color.white.opacity(0.44), lineWidth: 1)
                 )
                 .rotationEffect(.degrees(isTurning ? 360 : 0))
-                .animation(.easeInOut(duration: 0.7), value: isTurning)
+                .animation(.easeInOut(duration: 0.75), value: isTurning)
         }
         .position(x: size.width * 0.5, y: size.height * 0.615)
         .allowsHitTesting(false)
