@@ -193,6 +193,19 @@ struct CollectionCharacterProfileView: View {
                         endPoint: .bottom
                     )
                 )
+                .overlay(alignment: .topLeading) {
+                    blossomBranch
+                        .padding(.top, safeTop + 48)
+                        .padding(.leading, 14)
+                }
+                .overlay(alignment: .topTrailing) {
+                    Text("✦")
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.25))
+                        .shadow(color: .white.opacity(0.60), radius: 5)
+                        .padding(.top, safeTop + 102)
+                        .padding(.trailing, 30)
+                }
 
             VStack(spacing: 8) {
                 namePlaque(width: width)
@@ -214,6 +227,14 @@ struct CollectionCharacterProfileView: View {
                             .font(.system(size: 18, weight: .black))
                             .foregroundStyle(Color(red: 1.0, green: 0.42, blue: 0.51).opacity(0.42))
                             .offset(x: -14, y: 8)
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        blossom(size: 18)
+                            .offset(x: 26, y: 12)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        blossom(size: 18)
+                            .offset(x: -24, y: 14)
                     }
             }
             .padding(.horizontal, 18)
@@ -238,12 +259,20 @@ struct CollectionCharacterProfileView: View {
                 .frame(height: 86)
                 .shadow(color: .black.opacity(0.20), radius: 10, y: 5)
 
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color(red: 0.32, green: 0.14, blue: 0.04).opacity(0.26), lineWidth: 2)
+                .padding(.horizontal, 3)
+                .frame(height: 80)
+
             HStack {
-                decorativePetal
+                blossomCluster(scale: 0.70)
                 Spacer()
-                decorativePetal
+                Text("🍣")
+                    .font(.system(size: 44))
+                    .rotationEffect(.degrees(-9))
+                    .shadow(color: .black.opacity(0.22), radius: 5, y: 3)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 18)
 
             VStack(spacing: -2) {
                 Text(character.name)
@@ -271,15 +300,26 @@ struct CollectionCharacterProfileView: View {
 
     private var profileDetails: some View {
         VStack(spacing: 17) {
-            profileSection("About", character.about, icon: "takeoutbag.and.cup.and.straw.fill", accent: .salmon)
-            profileSection("Personality", character.personality, icon: "seal.fill", accent: .sakura)
-            profileSection("Loves", character.loves, icon: "heart.fill", accent: .heart)
-            profileSection("Fun Fact", character.funFact, icon: "star.fill", accent: .gold)
-            profileSection("First Visited", firstVisitedText, icon: "calendar.badge.checkmark", accent: .calendar)
+            profileSection("About", character.about, accent: .about)
+            profileSection("Personality", character.personality, accent: .personality)
+            profileSection("Loves", character.loves, accent: .loves)
+            profileSection("Fun Fact", character.funFact, accent: .funFact)
+            profileSection("First Visited", firstVisitedText, accent: .firstVisited)
         }
         .padding(.horizontal, 18)
         .padding(.top, 10)
         .padding(.bottom, 34)
+        .background(
+            ZStack {
+                Color.clear
+                ForEach(0..<8, id: \.self) { index in
+                    Image(systemName: "water.waves")
+                        .font(.system(size: 30, weight: .black))
+                        .foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.32).opacity(0.08))
+                        .offset(x: CGFloat((index % 2 == 0 ? -1 : 1) * (92 + index * 11)), y: CGFloat(index * 74 - 20))
+                }
+            }
+        )
     }
 
     private var profileBackground: some View {
@@ -324,25 +364,79 @@ struct CollectionCharacterProfileView: View {
             .rotationEffect(.degrees(18))
     }
 
-    private var decorativePetal: some View {
-        Image(systemName: "seal.fill")
-            .font(.system(size: 18, weight: .black))
-            .foregroundStyle(Color(red: 1.0, green: 0.54, blue: 0.62).opacity(0.55))
-            .rotationEffect(.degrees(-16))
-    }
-
     private var firstVisitedText: String {
         guard let date = character.dateFirstMet else { return "Not met yet" }
         return date.formatted(date: .long, time: .omitted)
     }
 
-    private func profileSection(_ title: String, _ value: String, icon: String, accent: ProfileAccent) -> some View {
+    private var blossomBranch: some View {
+        ZStack {
+            Capsule()
+                .fill(Color(red: 0.37, green: 0.17, blue: 0.08).opacity(0.52))
+                .frame(width: 150, height: 7)
+                .rotationEffect(.degrees(-24))
+                .offset(x: 26, y: 5)
+
+            blossom(size: 35).offset(x: 8, y: -12)
+            blossom(size: 28).offset(x: 45, y: -23)
+            blossom(size: 23).offset(x: 76, y: -6)
+            blossom(size: 30).offset(x: 104, y: -28)
+            blossom(size: 20).offset(x: 128, y: -2)
+        }
+        .frame(width: 170, height: 72, alignment: .topLeading)
+    }
+
+    private func blossom(size: CGFloat) -> some View {
+        ZStack {
+            ForEach(0..<5, id: \.self) { index in
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.66, blue: 0.73),
+                                Color(red: 0.95, green: 0.32, blue: 0.48)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: size * 0.42, height: size * 0.62)
+                    .offset(y: -size * 0.22)
+                    .rotationEffect(.degrees(Double(index) * 72))
+            }
+
+            Circle()
+                .fill(Color(red: 1.0, green: 0.78, blue: 0.16))
+                .frame(width: size * 0.22, height: size * 0.22)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: Color(red: 0.58, green: 0.13, blue: 0.20).opacity(0.24), radius: 3, y: 2)
+    }
+
+    private func blossomCluster(scale: CGFloat) -> some View {
+        ZStack {
+            blossom(size: 24 * scale).offset(x: -10 * scale, y: -3 * scale)
+            blossom(size: 18 * scale).offset(x: 10 * scale, y: -10 * scale)
+            blossom(size: 14 * scale).offset(x: 16 * scale, y: 7 * scale)
+        }
+        .frame(width: 52 * scale, height: 38 * scale)
+    }
+
+    private func profileSection(_ title: String, _ value: String, accent: ProfileAccent) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 18)
                 .fill(Color(red: 1.0, green: 0.95, blue: 0.84).opacity(0.96))
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "water.waves")
+                        .font(.system(size: 42, weight: .black))
+                        .foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.32).opacity(0.09))
+                        .padding(.top, 10)
+                        .padding(.trailing, 24)
+                }
                 .overlay(alignment: .trailing) {
-                    sectionWatermark(accent: accent)
-                        .padding(.trailing, 18)
+                    sectionDecoration(accent: accent)
+                        .padding(.trailing, 16)
+                        .padding(.top, 26)
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18)
@@ -352,13 +446,7 @@ struct CollectionCharacterProfileView: View {
 
             VStack(alignment: .leading, spacing: 13) {
                 HStack(spacing: 9) {
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: .black))
-                        .foregroundStyle(accent.symbolColor)
-                        .frame(width: 34, height: 34)
-                        .background(Circle().fill(Color(red: 1.0, green: 0.84, blue: 0.65)))
-                        .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 2))
-                        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                    sectionIcon(accent)
 
                     woodLabel(title)
                         .offset(x: -2)
@@ -376,6 +464,11 @@ struct CollectionCharacterProfileView: View {
             }
             .padding(.horizontal, 15)
             .padding(.vertical, 15)
+
+            if accent == .firstVisited {
+                blossomCluster(scale: 0.62)
+                    .offset(x: -4, y: 82)
+            }
         }
     }
 
@@ -402,87 +495,107 @@ struct CollectionCharacterProfileView: View {
             .shadow(color: .black.opacity(0.18), radius: 3, y: 2)
     }
 
-    private func sectionWatermark(accent: ProfileAccent) -> some View {
-        Image(systemName: accent.watermarkSymbol)
-            .font(.system(size: accent.watermarkSize, weight: .black))
-            .foregroundStyle(accent.watermarkColor)
-            .rotationEffect(.degrees(accent.rotation))
+    @ViewBuilder
+    private func sectionIcon(_ accent: ProfileAccent) -> some View {
+        switch accent {
+        case .about:
+            emojiBadge("🍣", background: Color(red: 1.0, green: 0.88, blue: 0.66))
+        case .personality:
+            ZStack {
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.82, blue: 0.88))
+                    .frame(width: 38, height: 38)
+                    .overlay(Circle().stroke(Color.white.opacity(0.82), lineWidth: 2))
+                blossom(size: 28)
+            }
+        case .loves:
+            emojiBadge("❤", background: Color(red: 1.0, green: 0.76, blue: 0.78), foreground: Color(red: 0.93, green: 0.12, blue: 0.24))
+        case .funFact:
+            emojiBadge("⭐", background: Color(red: 1.0, green: 0.88, blue: 0.58))
+        case .firstVisited:
+            emojiBadge("🗓️", background: Color(red: 1.0, green: 0.86, blue: 0.72))
+        }
+    }
+
+    private func emojiBadge(_ text: String, background: Color, foreground: Color? = nil) -> some View {
+        Text(text)
+            .font(.system(size: 22, weight: .black, design: .rounded))
+            .foregroundStyle(foreground ?? ink)
+            .frame(width: 38, height: 38)
+            .background(Circle().fill(background))
+            .overlay(Circle().stroke(Color.white.opacity(0.82), lineWidth: 2))
+            .shadow(color: .black.opacity(0.14), radius: 4, y: 2)
+    }
+
+    @ViewBuilder
+    private func sectionDecoration(accent: ProfileAccent) -> some View {
+        switch accent {
+        case .about:
+            ZStack {
+                Image(systemName: "face.smiling")
+                    .font(.system(size: 52, weight: .black))
+                    .foregroundStyle(Color(red: 0.92, green: 0.32, blue: 0.24).opacity(0.22))
+                Image(systemName: "mustache.fill")
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(Color(red: 0.92, green: 0.32, blue: 0.24).opacity(0.14))
+                    .offset(y: -22)
+            }
+        case .personality:
+            ZStack {
+                Text("🍶")
+                    .font(.system(size: 43))
+                    .rotationEffect(.degrees(10))
+                Text("♥")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.94, green: 0.22, blue: 0.36))
+                    .offset(x: -28, y: -18)
+                Text("♥")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.94, green: 0.22, blue: 0.36))
+                    .offset(x: -16, y: -31)
+            }
+        case .loves:
+            ZStack {
+                Text("🍣")
+                    .font(.system(size: 52))
+                    .rotationEffect(.degrees(-10))
+                Text("✦")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.12))
+                    .offset(x: -34, y: -16)
+                Text("✦")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.12))
+                    .offset(x: 33, y: -21)
+            }
+        case .funFact:
+            Image(systemName: "face.smiling")
+                .font(.system(size: 50, weight: .black))
+                .foregroundStyle(Color(red: 0.44, green: 0.21, blue: 0.08).opacity(0.38))
+        case .firstVisited:
+            VStack(spacing: 0) {
+                Text("寿司チャンプルー")
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                Text("Oishii Sushi!")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+            }
+            .foregroundStyle(Color(red: 0.92, green: 0.30, blue: 0.29).opacity(0.42))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(red: 0.92, green: 0.30, blue: 0.29).opacity(0.36), lineWidth: 2)
+            )
+        }
     }
 }
 
 private enum ProfileAccent {
-    case salmon
-    case sakura
-    case heart
-    case gold
-    case calendar
-
-    var symbolColor: Color {
-        switch self {
-        case .salmon:
-            return Color(red: 0.93, green: 0.35, blue: 0.16)
-        case .sakura:
-            return Color(red: 0.98, green: 0.36, blue: 0.52)
-        case .heart:
-            return Color(red: 0.92, green: 0.12, blue: 0.26)
-        case .gold:
-            return Color(red: 0.96, green: 0.61, blue: 0.04)
-        case .calendar:
-            return Color(red: 0.55, green: 0.23, blue: 0.10)
-        }
-    }
-
-    var watermarkSymbol: String {
-        switch self {
-        case .salmon:
-            return "fish.fill"
-        case .sakura:
-            return "seal.fill"
-        case .heart:
-            return "heart.fill"
-        case .gold:
-            return "face.smiling"
-        case .calendar:
-            return "stamp.fill"
-        }
-    }
-
-    var watermarkColor: Color {
-        switch self {
-        case .salmon:
-            return Color(red: 0.93, green: 0.35, blue: 0.16).opacity(0.13)
-        case .sakura, .heart:
-            return Color(red: 1.0, green: 0.35, blue: 0.48).opacity(0.16)
-        case .gold:
-            return Color(red: 0.45, green: 0.20, blue: 0.09).opacity(0.17)
-        case .calendar:
-            return Color(red: 0.95, green: 0.36, blue: 0.28).opacity(0.16)
-        }
-    }
-
-    var watermarkSize: CGFloat {
-        switch self {
-        case .calendar:
-            return 58
-        default:
-            return 48
-        }
-    }
-
-    var rotation: Double {
-        switch self {
-        case .salmon:
-            return -9
-        case .sakura:
-            return 12
-        case .heart:
-            return -10
-        case .gold:
-            return 0
-        case .calendar:
-            return -5
-        }
-    }
+    case about
+    case personality
+    case loves
+    case funFact
+    case firstVisited
 }
 
 private struct ProfileCharacterArtwork: View {
