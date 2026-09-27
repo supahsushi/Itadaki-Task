@@ -344,7 +344,9 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showingAchievements) {
             AchievementsScreen(
                 achievements: achievements,
-                pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks)
+                pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks),
+                collectedUnlockIDs: decodedStringSet(sushiCollectedAchievementUnlocks),
+                collectionCharacters: collectionCharacters
             )
         }
         .fullScreenCover(isPresented: $showingCollection) {
