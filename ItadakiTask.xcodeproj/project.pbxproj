@@ -13,6 +13,9 @@
 		8D8C7E422C00000100D4A100 /* AchievementSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E412C00000100D4A100 /* AchievementSystem.swift */; };
 		8D8C7E442C00000100D4A100 /* AchievementsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */; };
 		8D8C7E462C00000100D4A100 /* GachaponUnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E452C00000100D4A100 /* GachaponUnlockView.swift */; };
+		8D8C7E482C00000100D4A100 /* CollectionSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E472C00000100D4A100 /* CollectionSystem.swift */; };
+		8D8C7E4A2C00000100D4A100 /* CollectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E492C00000100D4A100 /* CollectionScreen.swift */; };
+		8D8C7E4C2C00000100D4A100 /* NewCustomerArrivalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +27,9 @@
 		8D8C7E412C00000100D4A100 /* AchievementSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementSystem.swift; sourceTree = "<group>"; };
 		8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsScreen.swift; sourceTree = "<group>"; };
 		8D8C7E452C00000100D4A100 /* GachaponUnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GachaponUnlockView.swift; sourceTree = "<group>"; };
+		8D8C7E472C00000100D4A100 /* CollectionSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionSystem.swift; sourceTree = "<group>"; };
+		8D8C7E492C00000100D4A100 /* CollectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionScreen.swift; sourceTree = "<group>"; };
+		8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCustomerArrivalView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -64,6 +70,9 @@
 				8D8C7E412C00000100D4A100 /* AchievementSystem.swift */,
 				8D8C7E432C00000100D4A100 /* AchievementsScreen.swift */,
 				8D8C7E452C00000100D4A100 /* GachaponUnlockView.swift */,
+				8D8C7E472C00000100D4A100 /* CollectionSystem.swift */,
+				8D8C7E492C00000100D4A100 /* CollectionScreen.swift */,
+				8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */,
 				8D8C7E382C00000100D4A100 /* Assets.xcassets */,
 				8D8C7E402C00000100D4A100 /* ItadakiTask.entitlements */,
 			);
@@ -150,6 +159,9 @@
 				8D8C7E422C00000100D4A100 /* AchievementSystem.swift in Sources */,
 				8D8C7E442C00000100D4A100 /* AchievementsScreen.swift in Sources */,
 				8D8C7E462C00000100D4A100 /* GachaponUnlockView.swift in Sources */,
+				8D8C7E482C00000100D4A100 /* CollectionSystem.swift in Sources */,
+				8D8C7E4A2C00000100D4A100 /* CollectionScreen.swift in Sources */,
+				8D8C7E4C2C00000100D4A100 /* NewCustomerArrivalView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

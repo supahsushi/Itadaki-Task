@@ -158,136 +158,6 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct CollectionCharacterProfile: Identifiable, Equatable {
-    var id: String
-    var name: String
-    var role: String
-    var assetName: String
-    var sourceArtworkFilename: String
-    var unlockAfterSushiEaten: Int
-    var profile: String
-
-    static let sushiSeries: [CollectionCharacterProfile] = [
-        CollectionCharacterProfile(
-            id: "tuna-the-gamer",
-            name: "Tuna the Gamer",
-            role: "Gamer",
-            assetName: "TunaTheGamer",
-            sourceArtworkFilename: "01. Tuna the gamer.png",
-            unlockAfterSushiEaten: 1,
-            profile: "This is the first proper character card for the cast, Tuna, the gamer of the group, headset on, controller in hand, boba on the desk, fully set up in his neon gaming corner. I wanted these to feel like real trading cards or character select screens, stats, a fun fact, a special move and all, instead of just a portrait. Tuna's the one who's always mid level up, and I liked giving him a whole setup that actually shows that instead of just telling you."
-        ),
-        CollectionCharacterProfile(
-            id: "salmon-the-food-tester",
-            name: "Salmon the Food Tester",
-            role: "Food Tester",
-            assetName: "SalmonTheFoodTester",
-            sourceArtworkFilename: "02. Salmon the food tester.png",
-            unlockAfterSushiEaten: 3,
-            profile: "Salmon's card, the resident food tester of the group, headband on, notepad in hand, giving today's testing menu a perfect 100 out of 100. She's the one who takes tasting seriously, freshness, flavor, presentation, happiness, all checked off. I liked giving her that little food test report clipboard, it felt like the right prop for someone whose whole job in this world is making sure everything is actually good before anyone else eats it."
-        ),
-        CollectionCharacterProfile(
-            id: "tamago-the-chill-one",
-            name: "Tamago the Chill One",
-            role: "Chill One",
-            assetName: "TamagoTheChillOne",
-            sourceArtworkFilename: "03. Tamago the chill one.png",
-            unlockAfterSushiEaten: 5,
-            profile: "Tamago's card, and true to the name, he's just sunk into a bean bag with boba in hand, watching Sushi Quest reruns and not moving for the rest of the day. Good Food, Good Mood, Good Vibes is basically his whole personality summed up in one neon sign. Out of the whole cast he might be the one I relate to the most, snacks, a good show, and zero plans, that's a perfect day."
-        ),
-        CollectionCharacterProfile(
-            id: "uni-the-fancy-foodie",
-            name: "Uni the Fancy Foodie",
-            role: "Fancy Foodie",
-            assetName: "UniTheFancyFoodie",
-            sourceArtworkFilename: "04. Uni the fancy foodie.png",
-            unlockAfterSushiEaten: 8,
-            profile: "Uni's card, crown, pearls, and all, because she's the fancy foodie of the group, sitting down to gyudon and sake like it's a five star meal every time. Good food, good vibes, good life is her whole motto. I liked giving her that little bit of luxury, since uni itself is already considered kind of a delicacy, it felt right to make her the one with the most refined taste in the whole cast."
-        ),
-        CollectionCharacterProfile(
-            id: "unagi-the-surfer",
-            name: "Unagi the Surfer",
-            role: "Surfer",
-            assetName: "UnagiTheSurfer",
-            sourceArtworkFilename: "05. Unagi the surfer.png",
-            unlockAfterSushiEaten: 10,
-            profile: "Unagi's card, sunglasses on, board under his arm, living that good vibes big waves sushi days life. Out of the whole cast he's probably the most laid back, ride the waves, chase the sun, eat good sushi, live happy, that's the entire philosophy right there. I gave him the Hawaiian shirt and shaka sign because he just felt like the type to already be barefoot on the sand before anyone else even wakes up."
-        ),
-        CollectionCharacterProfile(
-            id: "mackerel-the-photographer",
-            name: "Mackerel the Photographer",
-            role: "Photographer",
-            assetName: "MackerelThePhotographer",
-            sourceArtworkFilename: "06. Mackerel the Photographer.png",
-            unlockAfterSushiEaten: 15,
-            profile: "Mackerel's card, camera around his neck, bucket hat on, out chasing the perfect shot of Mt. Fuji through the cherry blossoms. Find beauty, take photos, eat good sushi, repeat, that's his whole daily plan written right there on the chalkboard. He's the one who's always got a travel log and a bag full of gear, documenting this whole world one photo at a time."
-        ),
-        CollectionCharacterProfile(
-            id: "squid-the-dj",
-            name: "Squid the DJ",
-            role: "DJ",
-            assetName: "SquidTheDJ",
-            sourceArtworkFilename: "07. Squid the DJ.png",
-            unlockAfterSushiEaten: 20,
-            profile: "Squid's card, headphones on, hands on the decks, good beats good vibes perfect flow lighting up behind him. This is a different squid than DJ Tako, same job, different vibe entirely, glossy and glowing instead of grungy and rave lit. Squid can change colors and vibes to match the perfect beat is literally true for this character, and I liked leaning into that with all the shifting neon around him."
-        ),
-        CollectionCharacterProfile(
-            id: "yellowtail-the-traveler",
-            name: "Yellowtail the Traveler",
-            role: "Traveler",
-            assetName: "YellowtailTheTraveler",
-            sourceArtworkFilename: "08. Yellowtail the Traveler.png",
-            unlockAfterSushiEaten: 25,
-            profile: "Yellowtail's card, passport and map in hand, suitcase covered in stickers from everywhere he's already been. New places, new tastes, new memories to treasure sums him up completely. He's the one who always finds the hidden sushi spot nobody else knew about, which felt like the perfect special skill for the traveler of the group."
-        ),
-        CollectionCharacterProfile(
-            id: "scallop-the-fisherman",
-            name: "Scallop the Fisherman",
-            role: "Fisherman",
-            assetName: "ScallopTheFisherman",
-            sourceArtworkFilename: "09. Scallop the Fisherman.png",
-            unlockAfterSushiEaten: 30,
-            profile: "Scallop's card, out on his own little boat riding the Great Wave, binoculars around his neck and a net full of today's catch. Patience, passion, and the perfect catch is his whole thing. He's technically outside the original eight, a bonus character I added once the cast started feeling like it needed someone actually out on the water bringing in the fish everyone else gets to eat."
-        ),
-        CollectionCharacterProfile(
-            id: "mama-roe-the-shopper",
-            name: "Mama Roe the Shopper",
-            role: "Shopper",
-            assetName: "MamaRoeTheShopper",
-            sourceArtworkFilename: "10. Mama Roe the shopper.png",
-            unlockAfterSushiEaten: 35,
-            profile: "Mama Roe's card, cart full of fresh produce and sushi snacks, a whole little family of baby roe following behind her at the store. Shopping with love, feeding happy little roes is exactly what she's about. She felt like the natural next character after the original eight, someone who takes care of everyone else in this world instead of being out on her own adventure."
-        ),
-        CollectionCharacterProfile(
-            id: "red-snapper-the-taiko-master",
-            name: "Red Snapper the Taiko Master",
-            role: "Taiko Master",
-            assetName: "RedSnapperTaikoMaster",
-            sourceArtworkFilename: "11. Red Snapper the Taiko drum master.png",
-            unlockAfterSushiEaten: 40,
-            profile: "Red Snapper's card, drumsticks raised, taiko drums on either side, a whole crowd of friends drumming along behind him at what looks like a festival. Every beat brings joy, every rhythm connects us all, is basically the heart of this whole card. I wanted at least one character built entirely around a traditional performance art instead of a modern hobby, and taiko drumming felt like the perfect fit for that energy."
-        ),
-        CollectionCharacterProfile(
-            id: "sushiroll-the-librarian",
-            name: "SushiRoll the Librarian",
-            role: "Librarian",
-            assetName: "SushiRollTheLibrarian",
-            sourceArtworkFilename: "12. SushiRoll the Librarian.png",
-            unlockAfterSushiEaten: 45,
-            profile: "SushiRoll's card, glasses on, arms full of books, tucked into a cozy library corner surrounded by shelves. Books nourish the soul, and every book is an adventure waiting to be rolled, which might be my favorite line out of any of these cards. She keeps the whole sushi archive in order, quiet but full of wisdom, and I liked giving this world at least one character whose whole personality is just loving to read."
-        ),
-        CollectionCharacterProfile(
-            id: "lobster-crab-the-sumo-bros",
-            name: "Lobster & Crab: The Sumo Bros",
-            role: "Sumo Bros",
-            assetName: "LobsterCrabSumoBros",
-            sourceArtworkFilename: "13. The Sumo Bros 2.png",
-            unlockAfterSushiEaten: 50,
-            profile: "Lobster and Crab's card, squared off in the ring in front of a packed crowd, sumo belts on and claws raised. No retreat, only sushi glory pretty much says it all. I wanted a duo card instead of just another solo character, two shellfish brothers who settle everything in the ring, one match, one winner, eternal bragging rights. It's probably the most dramatic card in the whole set, and I love that about it."
-        )
-    ]
-}
-
 enum Daypart {
     case morning
     case noon
@@ -364,15 +234,19 @@ struct ContentView: View {
     @AppStorage("sushiAchievementStates") private var sushiAchievementStates = ""
     @AppStorage("sushiPendingAchievementUnlocks") private var sushiPendingAchievementUnlocks = ""
     @AppStorage("sushiCollectedAchievementUnlocks") private var sushiCollectedAchievementUnlocks = ""
+    @AppStorage("sushiCollectionStates") private var sushiCollectionStates = ""
+    @AppStorage("sushiPendingCustomerArrivals") private var sushiPendingCustomerArrivals = ""
     @AppStorage("sushiAskedHealthKit") private var hasAskedHealthKit = false
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
     @State private var showingAchievements = false
+    @State private var showingCollection = false
     @State private var showingNamePrompt = false
     @State private var draftName = ""
     @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
     @State private var currentAchievementUnlock: Achievement?
+    @State private var currentCustomerArrival: CollectionCharacter?
 
     private let daypart = Daypart()
 
@@ -408,6 +282,9 @@ struct ContentView: View {
                 OrderMenuHitZones(
                     artworkFrame: artworkFrame,
                     showsRightSideOrderButton: !mealIsFull,
+                    openCollection: {
+                        showingCollection = true
+                    },
                     openAchievements: {
                         showingAchievements = true
                     }
@@ -450,6 +327,8 @@ struct ContentView: View {
             resetMealIfNeeded()
             migrateLegacyAchievementUnlocksIfNeeded()
             evaluateAchievements()
+            migrateCollectionUnlocksIfNeeded()
+            presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
             requestHealthKitAuthorizationIfNeeded()
         }
@@ -468,9 +347,17 @@ struct ContentView: View {
                 pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks)
             )
         }
+        .fullScreenCover(isPresented: $showingCollection) {
+            CollectionScreen(characters: collectionCharacters)
+        }
         .fullScreenCover(item: $currentAchievementUnlock) { achievement in
             GachaponUnlockView(achievement: achievement) {
                 collectAchievementUnlock(achievement)
+            }
+        }
+        .fullScreenCover(item: $currentCustomerArrival) { character in
+            NewCustomerArrivalView(character: character) {
+                welcomeCustomerArrival(character)
             }
         }
         .alert("What is the customer's name?", isPresented: $showingNamePrompt) {
@@ -482,6 +369,16 @@ struct ContentView: View {
             }
         } message: {
             Text("Chef will write it on your Itadaki Task order board.")
+        }
+        .onChange(of: showingAchievements) { _, isPresented in
+            guard !isPresented else { return }
+            presentNextPendingCustomerArrivalIfNeeded()
+            presentNextPendingAchievementUnlockIfNeeded()
+        }
+        .onChange(of: showingCollection) { _, isPresented in
+            guard !isPresented else { return }
+            presentNextPendingCustomerArrivalIfNeeded()
+            presentNextPendingAchievementUnlockIfNeeded()
         }
     }
 
@@ -534,6 +431,10 @@ struct ContentView: View {
             from: decodedAchievementStates(),
             progress: achievementProgressSnapshot
         )
+    }
+
+    private var collectionCharacters: [CollectionCharacter] {
+        CollectionManager.characters(from: decodedCollectionStates())
     }
 
     private func fittedArtworkFrame(container: CGSize, artwork: CGSize) -> CGRect {
@@ -691,7 +592,12 @@ struct ContentView: View {
 
     private func presentNextPendingAchievementUnlockIfNeeded() {
         guard currentAchievementUnlock == nil else { return }
+        guard currentCustomerArrival == nil else { return }
         guard !showingAchievements else { return }
+        guard decodedStringArray(sushiPendingCustomerArrivals).isEmpty else {
+            presentNextPendingCustomerArrivalIfNeeded()
+            return
+        }
 
         let collectedIDs = decodedStringSet(sushiCollectedAchievementUnlocks)
         let pendingIDs = decodedStringArray(sushiPendingAchievementUnlocks)
@@ -713,11 +619,61 @@ struct ContentView: View {
 
         let remainingPendingIDs = decodedStringArray(sushiPendingAchievementUnlocks).filter { $0 != achievement.id }
         sushiPendingAchievementUnlocks = Self.encoded(remainingPendingIDs)
+
+        if let result = CollectionManager.unlockCharacter(
+            for: achievement,
+            states: decodedCollectionStates()
+        ) {
+            sushiCollectionStates = Self.encoded(result.states)
+            if let character = result.newlyUnlocked {
+                enqueueCustomerArrival(character.id)
+            }
+        }
+
         currentAchievementUnlock = nil
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            if presentNextPendingCustomerArrivalIfNeeded() {
+                return
+            }
+            presentNextPendingAchievementUnlockIfNeeded()
+        }
+    }
+
+    @discardableResult
+    private func presentNextPendingCustomerArrivalIfNeeded() -> Bool {
+        guard currentAchievementUnlock == nil else { return false }
+        guard currentCustomerArrival == nil else { return true }
+        guard !showingAchievements else { return false }
+        guard !showingCollection else { return false }
+
+        let pendingIDs = decodedStringArray(sushiPendingCustomerArrivals)
+        guard let nextID = pendingIDs.first,
+              let character = collectionCharacters.first(where: { $0.id == nextID && $0.isUnlocked }) else {
+            return false
+        }
+
+        DispatchQueue.main.async {
+            currentCustomerArrival = character
+        }
+        return true
+    }
+
+    private func welcomeCustomerArrival(_ character: CollectionCharacter) {
+        let remainingPendingIDs = decodedStringArray(sushiPendingCustomerArrivals).filter { $0 != character.id }
+        sushiPendingCustomerArrivals = Self.encoded(remainingPendingIDs)
+        currentCustomerArrival = nil
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             presentNextPendingAchievementUnlockIfNeeded()
         }
+    }
+
+    private func enqueueCustomerArrival(_ characterID: String) {
+        var pendingIDs = decodedStringArray(sushiPendingCustomerArrivals)
+        guard !pendingIDs.contains(characterID) else { return }
+        pendingIDs.append(characterID)
+        sushiPendingCustomerArrivals = Self.encoded(pendingIDs)
     }
 
     private func currentStreak(from completedDayKeys: Set<String>, endingAt date: Date) -> Int {
@@ -759,6 +715,14 @@ struct ContentView: View {
         guard let data = sushiAchievementStates.data(using: .utf8),
               let decoded = try? JSONDecoder().decode([AchievementState].self, from: data) else {
             return AchievementManager.initialStates()
+        }
+        return decoded
+    }
+
+    private func decodedCollectionStates() -> [CollectionCharacterState] {
+        guard let data = sushiCollectionStates.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode([CollectionCharacterState].self, from: data) else {
+            return CollectionManager.initialStates()
         }
         return decoded
     }
@@ -808,6 +772,20 @@ struct ContentView: View {
             )
         }
         sushiAchievementStates = Self.encoded(migratedStates)
+    }
+
+    private func migrateCollectionUnlocksIfNeeded() {
+        let currentStates = decodedCollectionStates()
+        let pendingAchievementIDs = Set(decodedStringArray(sushiPendingAchievementUnlocks))
+        let backfillableAchievements = achievements.filter { !pendingAchievementIDs.contains($0.id) }
+        let backfilledStates = CollectionManager.backfillUnlockedCharacters(
+            from: backfillableAchievements,
+            states: currentStates
+        )
+
+        if sushiCollectionStates.isEmpty || backfilledStates != currentStates {
+            sushiCollectionStates = Self.encoded(backfilledStates)
+        }
     }
 
     private static func localDayKey(for date: Date) -> String {
@@ -1149,6 +1127,7 @@ struct ArtworkNavigationHitZones: View {
 struct OrderMenuHitZones: View {
     var artworkFrame: CGRect
     var showsRightSideOrderButton: Bool
+    var openCollection: () -> Void
     var openAchievements: () -> Void
     var openOrders: () -> Void
 
@@ -1162,6 +1141,17 @@ struct OrderMenuHitZones: View {
             .frame(width: artworkFrame.width * 0.17, height: artworkFrame.height * 0.063)
             .position(
                 x: artworkFrame.minX + artworkFrame.width * 0.315,
+                y: artworkFrame.minY + artworkFrame.height * 0.956
+            )
+
+            Button(action: openCollection) {
+                Color.black.opacity(0.001)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Collection")
+            .frame(width: artworkFrame.width * 0.17, height: artworkFrame.height * 0.063)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * 0.685,
                 y: artworkFrame.minY + artworkFrame.height * 0.956
             )
 
