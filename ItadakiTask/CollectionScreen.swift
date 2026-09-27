@@ -301,17 +301,28 @@ struct CollectionCharacterProfileView: View {
     private var profileDetails: some View {
         VStack(spacing: 17) {
             profileSection("About", character.about, accent: .about)
+            profileIconStrip
             profileSection("Personality", character.personality, accent: .personality)
             profileSection("Loves", character.loves, accent: .loves)
             profileSection("Fun Fact", character.funFact, accent: .funFact)
             profileSection("First Visited", firstVisitedText, accent: .firstVisited)
         }
         .padding(.horizontal, 18)
-        .padding(.top, 10)
+        .padding(.top, 26)
         .padding(.bottom, 34)
         .background(
             ZStack {
-                Color.clear
+                LinearGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.92, blue: 0.78).opacity(0.0),
+                        Color(red: 1.0, green: 0.91, blue: 0.76).opacity(0.96),
+                        Color(red: 0.98, green: 0.79, blue: 0.58)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .padding(.top, -92)
+
                 ForEach(0..<8, id: \.self) { index in
                     Image(systemName: "water.waves")
                         .font(.system(size: 30, weight: .black))
@@ -320,6 +331,60 @@ struct CollectionCharacterProfileView: View {
                 }
             }
         )
+        .overlay(alignment: .top) {
+            HStack(spacing: 16) {
+                blossom(size: 19)
+                Image(systemName: "water.waves")
+                    .font(.system(size: 28, weight: .black))
+                    .foregroundStyle(Color(red: 0.89, green: 0.30, blue: 0.26).opacity(0.16))
+                blossom(size: 15)
+            }
+            .offset(y: -8)
+            .allowsHitTesting(false)
+        }
+    }
+
+    private var profileIconStrip: some View {
+        HStack(spacing: 12) {
+            profileMiniIcon("🍣")
+            profileMiniIcon("🌸")
+            profileMiniIcon("❤")
+            profileMiniIcon("⭐")
+            profileMiniIcon("🗓️")
+        }
+        .padding(.vertical, 5)
+        .padding(.horizontal, 16)
+        .background(
+            Capsule()
+                .fill(Color(red: 1.0, green: 0.88, blue: 0.68).opacity(0.70))
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                )
+        )
+        .overlay(alignment: .leading) {
+            blossom(size: 15)
+                .offset(x: -6, y: -10)
+        }
+        .overlay(alignment: .trailing) {
+            blossom(size: 15)
+                .offset(x: 6, y: 10)
+        }
+    }
+
+    private func profileMiniIcon(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 18, weight: .black, design: .rounded))
+            .frame(width: 38, height: 38)
+            .background(
+                Circle()
+                    .fill(Color(red: 1.0, green: 0.96, blue: 0.84))
+                    .shadow(color: Color(red: 0.52, green: 0.22, blue: 0.08).opacity(0.12), radius: 4, y: 2)
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color(red: 0.80, green: 0.44, blue: 0.22).opacity(0.20), lineWidth: 1)
+            )
     }
 
     private var profileBackground: some View {
