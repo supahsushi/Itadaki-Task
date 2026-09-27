@@ -181,6 +181,8 @@ struct CollectionCharacterProfileView: View {
         ZStack(alignment: .bottom) {
             ProfileCharacterArtwork(character: character)
                 .frame(width: width, height: max(430, min(width * 1.18, 560)) + safeTop)
+                .scaleEffect(1.38, anchor: .center)
+                .offset(y: max(42, safeTop + 24))
                 .clipped()
                 .overlay(
                     LinearGradient(
