@@ -238,9 +238,9 @@ struct CollectionCharacterProfileView: View {
                     }
             }
             .padding(.horizontal, 18)
-            .padding(.bottom, -42)
+            .padding(.bottom, -54)
         }
-        .padding(.bottom, 58)
+        .padding(.bottom, 70)
     }
 
     private func namePlaque(width: CGFloat) -> some View {
@@ -299,29 +299,28 @@ struct CollectionCharacterProfileView: View {
     }
 
     private var profileDetails: some View {
-        VStack(spacing: 17) {
+        VStack(spacing: 18) {
             profileSection("About", character.about, accent: .about)
-            profileIconStrip
             profileSection("Personality", character.personality, accent: .personality)
             profileSection("Loves", character.loves, accent: .loves)
             profileSection("Fun Fact", character.funFact, accent: .funFact)
             profileSection("First Visited", firstVisitedText, accent: .firstVisited)
         }
         .padding(.horizontal, 18)
-        .padding(.top, 26)
-        .padding(.bottom, 34)
+        .padding(.top, 18)
+        .padding(.bottom, 38)
         .background(
             ZStack {
                 LinearGradient(
                     colors: [
-                        Color(red: 1.0, green: 0.92, blue: 0.78).opacity(0.0),
-                        Color(red: 1.0, green: 0.91, blue: 0.76).opacity(0.96),
-                        Color(red: 0.98, green: 0.79, blue: 0.58)
+                        Color(red: 1.0, green: 0.91, blue: 0.73).opacity(0.0),
+                        Color(red: 1.0, green: 0.93, blue: 0.78).opacity(0.98),
+                        Color(red: 0.99, green: 0.83, blue: 0.62)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .padding(.top, -92)
+                .padding(.top, -118)
 
                 ForEach(0..<8, id: \.self) { index in
                     Image(systemName: "water.waves")
@@ -342,49 +341,6 @@ struct CollectionCharacterProfileView: View {
             .offset(y: -8)
             .allowsHitTesting(false)
         }
-    }
-
-    private var profileIconStrip: some View {
-        HStack(spacing: 12) {
-            profileMiniIcon("🍣")
-            profileMiniIcon("🌸")
-            profileMiniIcon("❤")
-            profileMiniIcon("⭐")
-            profileMiniIcon("🗓️")
-        }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 16)
-        .background(
-            Capsule()
-                .fill(Color(red: 1.0, green: 0.88, blue: 0.68).opacity(0.70))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
-                )
-        )
-        .overlay(alignment: .leading) {
-            blossom(size: 15)
-                .offset(x: -6, y: -10)
-        }
-        .overlay(alignment: .trailing) {
-            blossom(size: 15)
-                .offset(x: 6, y: 10)
-        }
-    }
-
-    private func profileMiniIcon(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 18, weight: .black, design: .rounded))
-            .frame(width: 38, height: 38)
-            .background(
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.96, blue: 0.84))
-                    .shadow(color: Color(red: 0.52, green: 0.22, blue: 0.08).opacity(0.12), radius: 4, y: 2)
-            )
-            .overlay(
-                Circle()
-                    .stroke(Color(red: 0.80, green: 0.44, blue: 0.22).opacity(0.20), lineWidth: 1)
-            )
     }
 
     private var profileBackground: some View {
@@ -490,7 +446,7 @@ struct CollectionCharacterProfileView: View {
     private func profileSection(_ title: String, _ value: String, accent: ProfileAccent) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 18)
-                .fill(Color(red: 1.0, green: 0.95, blue: 0.84).opacity(0.96))
+                .fill(Color(red: 1.0, green: 0.95, blue: 0.83).opacity(0.92))
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: "water.waves")
                         .font(.system(size: 42, weight: .black))
@@ -505,30 +461,31 @@ struct CollectionCharacterProfileView: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18)
-                        .stroke(Color(red: 0.77, green: 0.43, blue: 0.22).opacity(0.34), lineWidth: 1.5)
+                        .stroke(Color(red: 0.77, green: 0.43, blue: 0.22).opacity(0.36), lineWidth: 1.5)
                 )
-                .shadow(color: Color(red: 0.38, green: 0.18, blue: 0.08).opacity(0.13), radius: 8, y: 5)
+                .shadow(color: Color(red: 0.38, green: 0.18, blue: 0.08).opacity(0.12), radius: 7, y: 4)
 
             VStack(alignment: .leading, spacing: 13) {
-                HStack(spacing: 9) {
-                    sectionIcon(accent)
-
-                    woodLabel(title)
-                        .offset(x: -2)
-
-                    Spacer()
-                }
-
                 Text(value)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(ink)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 6)
+                    .padding(.leading, 10)
                     .padding(.trailing, 72)
             }
             .padding(.horizontal, 15)
-            .padding(.vertical, 15)
+            .padding(.top, 44)
+            .padding(.bottom, 17)
+
+            HStack(spacing: 7) {
+                sectionIcon(accent)
+                    .zIndex(1)
+
+                woodLabel(title)
+                    .offset(x: -5)
+            }
+            .offset(x: 14, y: -13)
 
             if accent == .firstVisited {
                 blossomCluster(scale: 0.62)
