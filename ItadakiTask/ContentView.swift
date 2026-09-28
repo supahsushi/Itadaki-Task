@@ -507,6 +507,10 @@ struct ContentView: View {
             presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
             requestHealthKitAuthorizationIfNeeded()
+            Task {
+                await PremiumStore.shared.start()
+                syncRemindersWithPremium()
+            }
         }
         .fullScreenCover(item: $editingTask, onDismiss: openMenuDestinationAfterAddTask) { task in
             AddTaskSheet(
@@ -575,6 +579,9 @@ struct ContentView: View {
             }
         } message: {
             Text("Chef will write it on your Itadaki Task order board.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .premiumStatusChanged)) { _ in
+            syncRemindersWithPremium()
         }
         .onChange(of: showingAchievements) { _, isPresented in
             guard !isPresented else { return }
@@ -666,6 +673,16 @@ struct ContentView: View {
             width: width,
             height: height
         )
+    }
+
+    /// Premium schedules every task's reminder; without it, none are scheduled.
+    private func syncRemindersWithPremium() {
+        let scheduler = LocalNotificationScheduler.shared
+        scheduler.cancelAllReminders()
+        guard PremiumStore.isPremiumCached else { return }
+        for task in tasks where task.hasReminder {
+            scheduler.scheduleReminder(for: task)
+        }
     }
 
     /// Saves edits to an existing task and reschedules its reminders.
@@ -1082,8 +1099,16 @@ final class LocalNotificationScheduler: @unchecked Sendable {
 
     private init() {}
 
+    /// Bundled Chef alarm sound (any of these names), used when present; otherwise the default sound.
+    /// Notification sounds must be 30 seconds or shorter.
+    private static let chefSoundFile: String? = ["ChefAlarm.caf", "ChefAlarm.wav", "ChefAlarm.aiff"].first {
+        let parts = $0.split(separator: ".")
+        return Bundle.main.url(forResource: String(parts[0]), withExtension: String(parts[1])) != nil
+    }
+
+    /// Scheduled reminders are a Premium feature.
     func scheduleReminder(for task: SushiTask) {
-        guard task.hasReminder else { return }
+        guard task.hasReminder, PremiumStore.isPremiumCached else { return }
 
         Task {
             guard await requestAuthorization() else { return }
@@ -1098,6 +1123,11 @@ final class LocalNotificationScheduler: @unchecked Sendable {
                 }
             }
         }
+    }
+
+    /// Removes every scheduled reminder (used when Premium isn't active).
+    func cancelAllReminders() {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 
     func cancelReminder(for task: SushiTask) {
@@ -1122,7 +1152,7 @@ final class LocalNotificationScheduler: @unchecked Sendable {
         let content = UNMutableNotificationContent()
         content.title = "Chef has an order for you"
         content.body = task.title
-        content.sound = .default
+        content.sound = Self.chefSoundFile.map { UNNotificationSound(named: UNNotificationSoundName($0)) } ?? .default
 
         let calendar = Calendar.current
         let hourMinute = calendar.dateComponents([.hour, .minute], from: task.dueDate)
@@ -1750,6 +1780,9 @@ struct AddTaskSheet: View {
     @State private var dueDate: Date
     @State private var repeatOption: AddTaskRepeatOption = .none
     @State private var category: TaskCategory = .other
+    @State private var remindMe = true
+    @State private var showingPremium = false
+    @ObservedObject private var premium = PremiumStore.shared
     @State private var showingDatePicker = false
     @State private var showingTimePicker = false
 
@@ -1767,6 +1800,7 @@ struct AddTaskSheet: View {
         _dueDate = State(initialValue: editing?.dueDate ?? Self.defaultDueDate(for: daypart))
         _repeatOption = State(initialValue: editing.map { AddTaskRepeatOption(recurrence: $0.recurrence) } ?? .none)
         _category = State(initialValue: editing?.category ?? .other)
+        _remindMe = State(initialValue: editing?.hasReminder ?? true)
     }
 
     private var layout: OrderArtworkLayout { .layout(for: daypart) }
@@ -1836,6 +1870,8 @@ struct AddTaskSheet: View {
 
                 categoryMenu(mapper: mapper)
 
+                reminderButton(mapper: mapper)
+
                 // The painted "Add Task" button; the art already has its label.
                 Button {
                     submitTask()
@@ -1853,6 +1889,9 @@ struct AddTaskSheet: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .sheet(isPresented: $showingPremium) {
+            PremiumSheet()
+        }
         .sheet(isPresented: $showingDatePicker) {
             pickerSheet(title: "Choose Date") {
                 DatePicker("Date", selection: $dueDate, displayedComponents: .date)
@@ -1881,6 +1920,7 @@ struct AddTaskSheet: View {
             task.category = category
             task.dueDate = dueDate
             task.recurrence = repeatOption.recurrence
+            task.hasReminder = remindMe
             addTask(task)
         } else {
             addTask(
@@ -1889,7 +1929,7 @@ struct AddTaskSheet: View {
                     category: category,
                     dueDate: dueDate,
                     recurrence: repeatOption.recurrence,
-                    hasReminder: true
+                    hasReminder: remindMe
                 )
             )
         }
@@ -1931,6 +1971,44 @@ struct AddTaskSheet: View {
         .accessibilityLabel("Category, \(category.displayName)")
         .frame(width: 330 * scale, alignment: .trailing)
         .position(x: trailing.x - 165 * scale, y: trailing.y)
+    }
+
+    /// Bell toggle left of the Category menu. Reminders are Premium, so without it
+    /// the bell shows a crown and opens the Premium sheet.
+    private func reminderButton(mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        let centerY = (layout.timeTile.maxY + layout.repeatRowTop) / 2
+        let center = mapper.point(CGPoint(x: layout.field.maxX - 330 - 16 - 62, y: centerY))
+        let isOn = premium.isPremium && remindMe
+
+        return Button {
+            if premium.isPremium {
+                remindMe.toggle()
+            } else {
+                showingPremium = true
+            }
+        } label: {
+            HStack(spacing: 5 * scale) {
+                Image(systemName: isOn ? "bell.fill" : "bell.slash.fill")
+                    .font(.system(size: 22 * scale, weight: .black))
+                    .foregroundStyle(isOn ? Self.selectedPink : Color(red: 0.55, green: 0.47, blue: 0.40))
+                if !premium.isPremium {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 18 * scale, weight: .black))
+                        .foregroundStyle(Color(red: 0.95, green: 0.68, blue: 0.10))
+                } else {
+                    Text(isOn ? "On" : "Off")
+                        .font(.system(size: 22 * scale, weight: .bold, design: .rounded))
+                        .foregroundStyle(Self.ink)
+                }
+            }
+            .frame(width: 124 * scale, height: 44 * scale)
+            .background(Self.tilePaper, in: Capsule())
+            .overlay(Capsule().stroke(Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(premium.isPremium ? "Reminder \(isOn ? "on" : "off")" : "Reminders, Premium")
+        .position(center)
     }
 
     private func menuHitZone(
