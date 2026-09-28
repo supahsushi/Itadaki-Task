@@ -144,11 +144,14 @@ struct CollectionCharacterProfileView: View {
     private let paperLight = Color(red: 1.0, green: 0.96, blue: 0.91)
     private let paperEdge = Color(red: 0.82, green: 0.58, blue: 0.40)
 
-    /// Room above the artwork for the back button, so it never covers the logo.
-    private let heroButtonRow: CGFloat = 62
-    /// How far the name plaque straddles the hero backdrop and the paper page.
-    private let plaqueOverlap: CGFloat = 48
-    private let maxArtworkWidth: CGFloat = 820
+    /// How far the name plaque rides up onto the bottom of the artwork.
+    private let plaqueOverlap: CGFloat = 84
+    /// Where the paper page starts, measured down from the top of the plaque.
+    private let paperInset: CGFloat = 50
+    /// Tall mockup-style hero: height as a fraction of the screen width.
+    private let heroHeightRatio: CGFloat = 1.04
+    /// How much the artwork is zoomed past full width so the character fills the hero.
+    private let heroZoom: CGFloat = 1.42
     private let maxPageWidth: CGFloat = 640
 
     var body: some View {
@@ -162,26 +165,38 @@ struct CollectionCharacterProfileView: View {
                     }
                 }
                 .ignoresSafeArea()
-                .background(paper.ignoresSafeArea())
+                .background(overscrollBackground.ignoresSafeArea())
 
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 21, weight: .black))
+                        .font(.system(size: 18, weight: .black))
                         .foregroundStyle(Color(red: 0.24, green: 0.12, blue: 0.06))
-                        .frame(width: 48, height: 48)
+                        .frame(width: 42, height: 42)
                         .background(Circle().fill(Color(red: 1.0, green: 0.92, blue: 0.80)))
                         .overlay(Circle().stroke(Color.white.opacity(0.80), lineWidth: 2))
                         .shadow(color: .black.opacity(0.24), radius: 8, y: 4)
                 }
                 .accessibilityLabel("Back")
-                .padding(.leading, 18)
-                .padding(.top, proxy.safeAreaInsets.top + 7)
+                // The ZStack already sits inside the safe area, so this is just below the status bar.
+                .padding(.leading, 10)
+                .padding(.top, 8)
             }
         }
-        .preferredColorScheme(.light)
+        // Dark only so the status bar text turns white over the artwork; every color here is explicit.
+        .preferredColorScheme(.dark)
     }
+
+    /// Matches the hero at the top and the paper at the bottom, so bouncing past either end never shows a seam.
+    private var overscrollBackground: some View {
+        VStack(spacing: 0) {
+            heroBase
+            paper
+        }
+    }
+
+    private let heroBase = Color(red: 0.22, green: 0.11, blue: 0.05)
 
     // MARK: Hero
 
@@ -190,67 +205,60 @@ struct CollectionCharacterProfileView: View {
         return image.size.height / image.size.width
     }
 
+    /// Mockup-style hero: the artwork fills the top edge to edge, behind the status bar,
+    /// zoomed in on the character. The corners of the wide artwork are cropped away.
     private func profileHero(width: CGFloat, safeTop: CGFloat) -> some View {
-        let artworkWidth = min(width, maxArtworkWidth)
+        let heroHeight = width * heroHeightRatio
+        let imageWidth = width * heroZoom
+        let imageHeight = imageWidth * artworkAspectRatio
+        let offsetX = min(0, max(width - imageWidth, width / 2 - imageWidth * 0.52))
+        let offsetY = min(0, max(heroHeight - imageHeight, -imageHeight * 0.03))
 
-        return VStack(spacing: 0) {
-            Color.clear
-                .frame(height: safeTop + heroButtonRow)
+        return ZStack(alignment: .topLeading) {
+            heroBase
 
-            // The full, uncropped artwork: logo, Sushi Series title, and all.
-            ProfileCharacterArtwork(character: character)
-                .frame(width: artworkWidth, height: artworkWidth * artworkAspectRatio)
-                .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
-
-            Color.clear
-                .frame(height: plaqueOverlap + 14)
-        }
-        .frame(width: width)
-        .background { heroBackdrop }
-        // Decorations stay inside the button row so they never cover the artwork.
-        .overlay(alignment: .topTrailing) {
-            HStack(spacing: 14) {
-                Text("✦")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 1.0, green: 0.80, blue: 0.35))
-                    .shadow(color: .white.opacity(0.70), radius: 5)
-                blossom(size: 22)
-                blossomCluster(scale: 0.9)
+            if UIImage(named: character.artworkAssetName) != nil {
+                Image(character.artworkAssetName)
+                    .resizable()
+                    .frame(width: imageWidth, height: imageHeight)
+                    .offset(x: offsetX, y: offsetY)
+                    .accessibilityLabel("\(character.name), \(character.role) artwork")
+            } else {
+                ProfileCharacterArtwork(character: character)
+                    .frame(width: width, height: heroHeight)
             }
-            .padding(.top, safeTop + 16)
-            .padding(.trailing, 18)
-            .accessibilityHidden(true)
+
+            // Keeps the white status bar text readable over bright artwork.
+            LinearGradient(
+                colors: [Color.black.opacity(0.38), Color.black.opacity(0)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: safeTop + 36)
             .allowsHitTesting(false)
+
+            heroBlossoms(width: width, heroHeight: heroHeight, safeTop: safeTop)
         }
+        .frame(width: width, height: heroHeight, alignment: .topLeading)
+        .clipped()
     }
 
-    /// A soft, blurred copy of the artwork fills the space around it so the
-    /// header, the artwork, and the page read as one continuous scene.
-    private var heroBackdrop: some View {
-        Color(red: 0.36, green: 0.19, blue: 0.10)
-            .overlay {
-                if UIImage(named: character.artworkAssetName) != nil {
-                    Image(character.artworkAssetName)
-                        .resizable()
-                        .scaledToFill()
-                        .blur(radius: 22)
-                        .scaleEffect(1.15)
-                        .opacity(0.9)
-                }
-            }
-            .overlay(
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(red: 1.0, green: 0.88, blue: 0.76).opacity(0.62), location: 0),
-                        .init(color: Color(red: 1.0, green: 0.88, blue: 0.76).opacity(0.0), location: 0.14),
-                        .init(color: Color(red: 0.24, green: 0.10, blue: 0.03).opacity(0.0), location: 0.70),
-                        .init(color: Color(red: 0.24, green: 0.10, blue: 0.03).opacity(0.45), location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .clipped()
+    private func heroBlossoms(width: CGFloat, heroHeight: CGFloat, safeTop: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            blossom(size: 30).offset(x: width * 0.30, y: safeTop + 4)
+            blossom(size: 22).offset(x: width * 0.40, y: safeTop - 16)
+            blossom(size: 34).offset(x: -8, y: heroHeight * 0.34)
+            blossom(size: 24).offset(x: 20, y: heroHeight * 0.42)
+            blossom(size: 30).offset(x: 6, y: heroHeight * 0.80)
+            blossom(size: 22).offset(x: width - 34, y: heroHeight * 0.74)
+            Text("✦")
+                .font(.system(size: 26, weight: .black, design: .rounded))
+                .foregroundStyle(Color(red: 1.0, green: 0.84, blue: 0.30))
+                .shadow(color: .white.opacity(0.70), radius: 6)
+                .offset(x: width * 0.20, y: heroHeight * 0.34)
+        }
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 
     // MARK: Page
@@ -262,7 +270,7 @@ struct CollectionCharacterProfileView: View {
 
             quoteNote(width: width)
 
-            VStack(spacing: 18) {
+            VStack(spacing: 13) {
                 profileSection("About", character.about, accent: .about)
                 profileSection("Personality", character.personality, accent: .personality)
                 profileSection("Loves", character.loves, accent: .loves)
@@ -271,13 +279,13 @@ struct CollectionCharacterProfileView: View {
             }
             .frame(maxWidth: maxPageWidth)
             .padding(.horizontal, 16)
-            .padding(.top, 14)
+            .padding(.top, 10)
         }
         .padding(.bottom, safeBottom + 34)
         .frame(width: width)
         .background(alignment: .top) {
             paperPage
-                .padding(.top, plaqueOverlap)
+                .padding(.top, paperInset)
         }
     }
 
@@ -402,7 +410,7 @@ struct CollectionCharacterProfileView: View {
 
     private func quoteNote(width: CGFloat) -> some View {
         Text("\u{201C}\(character.quote)\u{201D}")
-            .font(.custom("Noteworthy-Bold", size: min(20, width * 0.048)))
+            .font(.custom("Noteworthy-Bold", size: min(17, width * 0.042)))
             .foregroundStyle(ink)
             .multilineTextAlignment(.center)
             .lineSpacing(1)
@@ -440,9 +448,9 @@ struct CollectionCharacterProfileView: View {
 
     private func profileSection(_ title: String, _ value: String, accent: ProfileAccent) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: -14) {
+            HStack(spacing: -12) {
                 sectionIcon(accent)
-                    .frame(width: 50, height: 50)
+                    .frame(width: 42, height: 42)
                     .zIndex(1)
                     .accessibilityHidden(true)
 
@@ -452,15 +460,15 @@ struct CollectionCharacterProfileView: View {
             .padding(.top, -8)
 
             Text(value)
-                .font(.system(size: 17, weight: .medium))
+                .font(.system(size: 15.5, weight: .regular))
                 .foregroundStyle(ink)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.leading, 22)
-                .padding(.trailing, 92)
+                .padding(.leading, 20)
+                .padding(.trailing, 84)
         }
-        .padding(.bottom, 16)
-        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, minHeight: 78, alignment: .topLeading)
         .background(alignment: .trailing) {
             sectionDecoration(accent: accent)
                 .padding(.trailing, 14)
@@ -499,13 +507,13 @@ struct CollectionCharacterProfileView: View {
 
     private func woodLabel(_ title: String) -> some View {
         Text(title.uppercased())
-            .font(.system(size: 18, weight: .black, design: .rounded))
+            .font(.system(size: 15.5, weight: .black, design: .rounded))
             .foregroundStyle(Color(red: 1.0, green: 0.97, blue: 0.92))
             .tracking(0.8)
             .shadow(color: Color(red: 0.25, green: 0.10, blue: 0.02).opacity(0.75), radius: 0, x: 0, y: 1.5)
             .padding(.leading, 26)
             .padding(.trailing, 30)
-            .padding(.vertical, 7)
+            .padding(.vertical, 5)
             .background(
                 WoodTabShape()
                     .fill(woodGradient)
@@ -523,7 +531,7 @@ struct CollectionCharacterProfileView: View {
         switch accent {
         case .about:
             MakiIcon()
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
         case .personality:
             iconEmoji("🌸")
@@ -538,7 +546,7 @@ struct CollectionCharacterProfileView: View {
 
     private func iconEmoji(_ emoji: String) -> some View {
         Text(emoji)
-            .font(.system(size: 38))
+            .font(.system(size: 31))
             .shadow(color: .black.opacity(0.22), radius: 3, y: 2)
     }
 
@@ -549,7 +557,7 @@ struct CollectionCharacterProfileView: View {
             ZStack {
                 Circle()
                     .stroke(Color(red: 0.92, green: 0.40, blue: 0.36).opacity(0.28), lineWidth: 2.5)
-                    .frame(width: 70, height: 70)
+                    .frame(width: 60, height: 60)
                 Image(systemName: "face.smiling")
                     .font(.system(size: 44, weight: .regular))
                     .foregroundStyle(Color(red: 0.92, green: 0.40, blue: 0.36).opacity(0.34))
@@ -557,7 +565,7 @@ struct CollectionCharacterProfileView: View {
         case .personality:
             ZStack {
                 Text("🍶")
-                    .font(.system(size: 44))
+                    .font(.system(size: 38))
                     .rotationEffect(.degrees(8))
                 Text("♥")
                     .font(.system(size: 16, weight: .black, design: .rounded))
@@ -571,7 +579,7 @@ struct CollectionCharacterProfileView: View {
         case .loves:
             ZStack {
                 Text("🍣")
-                    .font(.system(size: 54))
+                    .font(.system(size: 46))
                     .rotationEffect(.degrees(-10))
                 Text("✦")
                     .font(.system(size: 18, weight: .black, design: .rounded))
@@ -585,7 +593,7 @@ struct CollectionCharacterProfileView: View {
         case .funFact:
             ZStack {
                 Image(systemName: "face.smiling")
-                    .font(.system(size: 46, weight: .regular))
+                    .font(.system(size: 38, weight: .regular))
                     .foregroundStyle(Color(red: 0.38, green: 0.20, blue: 0.10).opacity(0.62))
                 ForEach(0..<3, id: \.self) { index in
                     Capsule()
