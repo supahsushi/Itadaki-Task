@@ -216,8 +216,8 @@ enum Daypart {
 }
 
 /// Where things sit in each home background, in the artwork's own pixels.
-/// The artwork paints placeholder text ("Jen", "Lv. 0", "0 / 10") into its panels,
-/// so each live value is drawn over a patch tinted to match the panel.
+/// Some artwork paints placeholder text ("Jen", "Lv. 0", "0 / 10") into its panels,
+/// so there each live value is drawn over a patch tinted to match the panel.
 struct HomeArtworkLayout {
     struct Patch {
         var rect: CGRect
@@ -227,7 +227,8 @@ struct HomeArtworkLayout {
 
     var artworkSize: CGSize
 
-    var profilePatch: Patch
+    /// Patches are only needed where the artwork paints placeholder text; nil means the panel is already empty.
+    var profilePatch: Patch?
     var nameLeadingX: CGFloat
     var nameCenterY: CGFloat
     var nameFontSize: CGFloat
@@ -236,10 +237,10 @@ struct HomeArtworkLayout {
     var meterRect: CGRect
     var meterFill: [Color]
 
-    var countPatch: Patch
+    var countPatch: Patch?
     var countCenter: CGPoint
     var countFontSize: CGFloat
-    var labelPatch: Patch
+    var labelPatch: Patch?
     var labelCenter: CGPoint
     var labelFontSize: CGFloat
     var labelText: String
@@ -263,32 +264,32 @@ struct HomeArtworkLayout {
 
     static let dayChef = HomeArtworkLayout(
         artworkSize: CGSize(width: 853, height: 1844),
-        profilePatch: Patch(rect: CGRect(x: 114, y: 86, width: 98, height: 74), top: brown(0.253, 0.111, 0.060), bottom: brown(0.298, 0.128, 0.064)),
+        profilePatch: nil,
         nameLeadingX: 120, nameCenterY: 104, nameFontSize: 24,
         levelCenterY: 129, levelFontSize: 21,
         meterRect: CGRect(x: 119, y: 142, width: 86, height: 11),
         meterFill: dayMeter,
-        countPatch: Patch(rect: CGRect(x: 715, y: 94, width: 113, height: 37), top: brown(0.300, 0.124, 0.054), bottom: brown(0.295, 0.120, 0.057)),
+        countPatch: nil,
         countCenter: CGPoint(x: 766, y: 113), countFontSize: 42,
-        labelPatch: Patch(rect: CGRect(x: 652, y: 133, width: 180, height: 29), top: brown(0.317, 0.139, 0.071), bottom: brown(0.313, 0.129, 0.054)),
+        labelPatch: nil,
         labelCenter: CGPoint(x: 740, y: 147), labelFontSize: 23, labelText: "sushi eaten today",
-        firstRowTop: 914, rowPitch: 80.75, rowHeight: 74, rowMinX: 63, rowMaxX: 677,
-        addTaskButton: CGRect(x: 524, y: 850, width: 210, height: 62)
+        firstRowTop: 914, rowPitch: 80.75, rowHeight: 74, rowMinX: 64, rowMaxX: 793,
+        addTaskButton: CGRect(x: 622, y: 852, width: 170, height: 50)
     )
 
     static let nightChef = HomeArtworkLayout(
         artworkSize: CGSize(width: 851, height: 1847),
-        profilePatch: Patch(rect: CGRect(x: 122, y: 112, width: 110, height: 78), top: brown(0.381, 0.136, 0.063), bottom: brown(0.378, 0.158, 0.103)),
+        profilePatch: nil,
         nameLeadingX: 127, nameCenterY: 131, nameFontSize: 26,
         levelCenterY: 155, levelFontSize: 22,
         meterRect: CGRect(x: 127, y: 171, width: 98, height: 13),
         meterFill: nightMeter,
-        countPatch: Patch(rect: CGRect(x: 712, y: 112, width: 112, height: 45), top: brown(0.317, 0.102, 0.045), bottom: brown(0.274, 0.085, 0.040)),
+        countPatch: nil,
         countCenter: CGPoint(x: 766, y: 135), countFontSize: 44,
-        labelPatch: Patch(rect: CGRect(x: 646, y: 157, width: 178, height: 33), top: brown(0.284, 0.095, 0.050), bottom: brown(0.248, 0.077, 0.035)),
+        labelPatch: nil,
         labelCenter: CGPoint(x: 731, y: 171), labelFontSize: 25, labelText: "Sushi Eaten Today",
-        firstRowTop: 860, rowPitch: 69.5, rowHeight: 66, rowMinX: 31, rowMaxX: 692,
-        addTaskButton: CGRect(x: 517, y: 801, width: 176, height: 42)
+        firstRowTop: 862, rowPitch: 70.25, rowHeight: 65, rowMinX: 35, rowMaxX: 810,
+        addTaskButton: CGRect(x: 640, y: 803, width: 165, height: 44)
     )
 
     static let dayThank = HomeArtworkLayout(
@@ -403,7 +404,6 @@ struct ContentView: View {
 
                 OrderMenuHitZones(
                     artworkFrame: artworkFrame,
-                    showsRightSideOrderButton: !mealIsFull,
                     openCollection: {
                         showingCollection = true
                     },
@@ -1139,10 +1139,10 @@ struct ProfileStreakLevelOverlay: View {
     var mapper: ArtworkMapper
 
     var body: some View {
-        let patch = mapper.rect(layout.profilePatch.rect)
         let meter = mapper.rect(layout.meterRect)
         let leadingX = mapper.point(CGPoint(x: layout.nameLeadingX, y: 0)).x
-        let textWidth = patch.maxX - leadingX - 4 * mapper.scale
+        // Name and level may run a little past the meter, to just inside the panel edge.
+        let textWidth = meter.maxX - leadingX + 6 * mapper.scale
 
         ZStack(alignment: .topLeading) {
             ArtworkPatch(patch: layout.profilePatch, mapper: mapper)
@@ -1177,16 +1177,18 @@ struct ProfileStreakLevelOverlay: View {
 
 /// Covers placeholder text painted into the artwork with the panel's own colors.
 struct ArtworkPatch: View {
-    var patch: HomeArtworkLayout.Patch
+    var patch: HomeArtworkLayout.Patch?
     var mapper: ArtworkMapper
 
     var body: some View {
-        let rect = mapper.rect(patch.rect)
-        RoundedRectangle(cornerRadius: 4 * mapper.scale)
-            .fill(LinearGradient(colors: [patch.top, patch.bottom], startPoint: .top, endPoint: .bottom))
-            .frame(width: rect.width, height: rect.height)
-            .blur(radius: 1.2 * mapper.scale)
-            .position(x: rect.midX, y: rect.midY)
+        if let patch {
+            let rect = mapper.rect(patch.rect)
+            RoundedRectangle(cornerRadius: 4 * mapper.scale)
+                .fill(LinearGradient(colors: [patch.top, patch.bottom], startPoint: .top, endPoint: .bottom))
+                .frame(width: rect.width, height: rect.height)
+                .blur(radius: 1.2 * mapper.scale)
+                .position(x: rect.midX, y: rect.midY)
+        }
     }
 }
 
@@ -1233,8 +1235,8 @@ struct MealCountOverlay: View {
     var body: some View {
         let count = mapper.point(layout.countCenter)
         let label = mapper.point(layout.labelCenter)
-        let countPatch = mapper.rect(layout.countPatch.rect)
-        let labelPatch = mapper.rect(layout.labelPatch.rect)
+        let countWidth = 116 * mapper.scale
+        let labelWidth = 180 * mapper.scale
 
         ZStack(alignment: .topLeading) {
             ArtworkPatch(patch: layout.countPatch, mapper: mapper)
@@ -1246,7 +1248,7 @@ struct MealCountOverlay: View {
                 .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(width: countPatch.width)
+                .frame(width: countWidth)
                 .position(count)
 
             Text(layout.labelText)
@@ -1255,7 +1257,7 @@ struct MealCountOverlay: View {
                 .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(width: labelPatch.width)
+                .frame(width: labelWidth)
                 .position(label)
         }
         .allowsHitTesting(false)
@@ -1295,7 +1297,6 @@ struct ArtworkNavigationHitZones: View {
 
 struct OrderMenuHitZones: View {
     var artworkFrame: CGRect
-    var showsRightSideOrderButton: Bool
     var openCollection: () -> Void
     var openAchievements: () -> Void
     var openOrders: () -> Void
@@ -1323,19 +1324,6 @@ struct OrderMenuHitZones: View {
                 x: artworkFrame.minX + artworkFrame.width * 0.685,
                 y: artworkFrame.minY + artworkFrame.height * 0.956
             )
-
-            if showsRightSideOrderButton {
-                Button(action: openOrders) {
-                    Color.black.opacity(0.001)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Orders")
-                .frame(width: artworkFrame.width * 0.125, height: artworkFrame.height * 0.055)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.915,
-                    y: artworkFrame.minY + artworkFrame.height * 0.451
-                )
-            }
 
             Button(action: openAchievements) {
                 Color.black.opacity(0.001)
