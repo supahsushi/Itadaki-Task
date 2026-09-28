@@ -1702,9 +1702,15 @@ struct AddTaskSheet: View {
         _dueDate = State(initialValue: Self.defaultDueDate(for: daypart))
     }
 
+    private var layout: OrderArtworkLayout { .layout(for: daypart) }
+
     var body: some View {
         GeometryReader { proxy in
             let artworkFrame = orderArtworkFrame(container: proxy.size)
+            let mapper = ArtworkMapper(frame: artworkFrame, artworkSize: layout.artworkSize)
+            let field = mapper.rect(layout.field)
+            let addButton = mapper.rect(layout.addButton)
+            let close = mapper.point(layout.closeCenter)
 
             ZStack {
                 AssetImage(name: daypart.orderAsset)
@@ -1720,91 +1726,50 @@ struct AddTaskSheet: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close Add Task")
-                .frame(width: artworkFrame.width * 0.085, height: artworkFrame.width * 0.085)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.915,
-                    y: artworkFrame.minY + artworkFrame.height * 0.471
-                )
+                .frame(width: 70 * mapper.scale, height: 70 * mapper.scale)
+                .position(close)
 
                 // The order artwork paints the bottom menu, so it needs its own tap zones.
-                menuHitZone("Home", centerX: 0.13, artworkFrame: artworkFrame) {
+                // Orders is this screen; Home is reserved for the future profile page.
+                menuHitZone("Back to Chef", centerX: 0.5, artworkFrame: artworkFrame) {
                     dismiss()
                 }
-                menuHitZone("Open Collection", centerX: 0.685, artworkFrame: artworkFrame) {
+                menuHitZone("Open Collection", centerX: 0.6875, artworkFrame: artworkFrame) {
                     openMenuDestination(.collection)
                 }
-                menuHitZone("Open Achievements", centerX: 0.870, artworkFrame: artworkFrame) {
+                menuHitZone("Open Achievements", centerX: 0.875, artworkFrame: artworkFrame) {
                     openMenuDestination(.achievements)
                 }
 
-                AddTaskTextCleanupLayer(artworkFrame: artworkFrame)
+                titleField(frame: field, scale: mapper.scale)
 
-                AddTaskStaticTextLayer(
-                    titleCount: min(title.count, 60),
-                    dateText: dateText,
-                    timeText: timeText,
-                    repeatOption: repeatOption,
-                    artworkFrame: artworkFrame
-                )
-
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
-                        .fill(Color.white.opacity(0.96))
-
-                    if title.isEmpty {
-                        Text("What would you like to do?")
-                            .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .bold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.45, green: 0.49, blue: 0.58).opacity(0.72))
-                            .padding(.horizontal, artworkFrame.width * 0.034)
-                    }
-
-                    TextField("", text: $title)
-                        .font(.system(size: max(15, artworkFrame.width * 0.020), weight: .black, design: .rounded))
-                        .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
-                        .submitLabel(.done)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, artworkFrame.width * 0.034)
-                }
-                .frame(width: artworkFrame.width * 0.84, height: artworkFrame.height * 0.039)
-                .position(
-                    x: artworkFrame.midX,
-                    y: artworkFrame.minY + artworkFrame.height * 0.512
-                )
-                .accessibilityLabel("What would you like to do?")
-                .onChange(of: title) { _, newValue in
-                    if newValue.count > 60 {
-                        title = String(newValue.prefix(60))
-                    }
-                }
-
-                dateTimeButton(
-                    label: dateText,
-                    artworkFrame: artworkFrame,
-                    centerX: 0.267,
-                    centerY: 0.587,
-                    width: 0.44
+                dateTimeTile(
+                    value: dateText,
+                    tile: mapper.rect(layout.dateTile),
+                    valueLeading: layout.dateValueLeading,
+                    scale: mapper.scale
                 ) {
                     showingDatePicker = true
                 }
-                .accessibilityLabel("Choose task date")
+                .accessibilityLabel("Choose task date, \(dateText)")
 
-                dateTimeButton(
-                    label: timeText,
-                    artworkFrame: artworkFrame,
-                    centerX: 0.661,
-                    centerY: 0.587,
-                    width: 0.40
+                dateTimeTile(
+                    value: timeText,
+                    tile: mapper.rect(layout.timeTile),
+                    valueLeading: layout.timeValueLeading,
+                    scale: mapper.scale
                 ) {
                     showingTimePicker = true
                 }
-                .accessibilityLabel("Choose task time")
+                .accessibilityLabel("Choose task time, \(timeText)")
 
                 ForEach(AddTaskRepeatOption.allCases) { option in
-                    repeatButton(option: option, artworkFrame: artworkFrame)
+                    repeatButton(option: option, mapper: mapper)
                 }
 
-                categoryMenu(artworkFrame: artworkFrame)
+                categoryMenu(mapper: mapper)
 
+                // The painted "Add Task" button; the art already has its label.
                 Button {
                     submitTask()
                 } label: {
@@ -1812,22 +1777,9 @@ struct AddTaskSheet: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add Task")
-                .frame(width: artworkFrame.width * 0.36, height: artworkFrame.height * 0.05)
-                .position(
-                    x: artworkFrame.midX,
-                    y: artworkFrame.minY + artworkFrame.height * 0.702
-                )
+                .frame(width: addButton.width, height: addButton.height)
+                .position(x: addButton.midX, y: addButton.midY)
                 .disabled(trimmedTitle.isEmpty)
-
-                Text("Add Task")
-                    .font(.system(size: max(19, artworkFrame.width * 0.027), weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
-                    .allowsHitTesting(false)
-                    .position(
-                        x: artworkFrame.midX,
-                        y: artworkFrame.minY + artworkFrame.height * 0.702
-                    )
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
@@ -1870,8 +1822,12 @@ struct AddTaskSheet: View {
     }
 
     /// Sits in the empty space to the right of the painted "Repeat (Optional)" heading.
-    private func categoryMenu(artworkFrame: CGRect) -> some View {
-        Menu {
+    private func categoryMenu(mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        let centerY = (layout.timeTile.maxY + layout.repeatRowTop) / 2
+        let trailing = mapper.point(CGPoint(x: layout.field.maxX, y: centerY))
+
+        return Menu {
             Picker("Category", selection: $category) {
                 ForEach(TaskCategory.allCases) { option in
                     Label(option.displayName, systemImage: option.icon)
@@ -1879,30 +1835,27 @@ struct AddTaskSheet: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6 * scale) {
                 Image(systemName: category.icon)
-                    .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .black))
+                    .font(.system(size: 22 * scale, weight: .black))
                     .foregroundStyle(category.color)
                 Text(category == .other ? "Category" : category.displayName)
-                    .font(.system(size: max(12, artworkFrame.width * 0.017), weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
+                    .font(.system(size: 24 * scale, weight: .bold, design: .rounded))
+                    .foregroundStyle(Self.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: max(9, artworkFrame.width * 0.012), weight: .black))
+                    .font(.system(size: 16 * scale, weight: .black))
                     .foregroundStyle(Color(red: 0.45, green: 0.35, blue: 0.28))
             }
-            .padding(.horizontal, 10)
-            .frame(height: artworkFrame.height * 0.028)
-            .background(Color.white.opacity(0.92), in: Capsule())
+            .padding(.horizontal, 16 * scale)
+            .frame(height: 44 * scale)
+            .background(Self.tilePaper, in: Capsule())
             .overlay(Capsule().stroke(Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 1))
         }
         .accessibilityLabel("Category, \(category.displayName)")
-        .frame(width: artworkFrame.width * 0.40, alignment: .trailing)
-        .position(
-            x: artworkFrame.minX + artworkFrame.width * 0.72,
-            y: artworkFrame.minY + artworkFrame.height * 0.615
-        )
+        .frame(width: 330 * scale, alignment: .trailing)
+        .position(x: trailing.x - 165 * scale, y: trailing.y)
     }
 
     private func menuHitZone(
@@ -1924,7 +1877,7 @@ struct AddTaskSheet: View {
     }
 
     private func orderArtworkFrame(container: CGSize) -> CGRect {
-        let artworkSize = CGSize(width: 853, height: 1844)
+        let artworkSize = layout.artworkSize
         let scale = max(container.width / artworkSize.width, container.height / artworkSize.height)
         let width = artworkSize.width * scale
         let height = artworkSize.height * scale
@@ -1950,39 +1903,130 @@ struct AddTaskSheet: View {
         dueDate.formatted(.dateTime.hour().minute())
     }
 
-    private func dateTimeButton(label: String, artworkFrame: CGRect, centerX: CGFloat, centerY: CGFloat, width: CGFloat, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private static let ink = Color(red: 0.08, green: 0.13, blue: 0.26)
+    /// The off-white of the painted tiles, used to cover their placeholder text.
+    private static let tilePaper = Color(red: 0.988, green: 0.973, blue: 0.957)
+    private static let valueBlue = Color(red: 0.02, green: 0.53, blue: 0.89)
+    private static let selectedPink = Color(red: 1.0, green: 0.22, blue: 0.50)
+
+    /// Covers the painted field (and its placeholder) with a live text field.
+    private func titleField(frame: CGRect, scale: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 18 * scale)
+                .fill(Color.white)
+
+            if title.isEmpty {
+                Text(layout.placeholder)
+                    .font(.system(size: 26 * scale, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color(red: 0.55, green: 0.60, blue: 0.70))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 22 * scale)
+                    .allowsHitTesting(false)
+            }
+
+            TextField("", text: $title)
+                .font(.system(size: 27 * scale, weight: .bold, design: .rounded))
+                .foregroundStyle(Self.ink)
+                .submitLabel(.done)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 22 * scale)
+                .padding(.trailing, 60 * scale)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Text("\(min(title.count, 60))/60")
+                .font(.system(size: 18 * scale, weight: .medium, design: .rounded))
+                .foregroundStyle(Color(red: 0.45, green: 0.50, blue: 0.58))
+                .padding(.trailing, 14 * scale)
+                .padding(.bottom, 8 * scale)
+                .allowsHitTesting(false)
+        }
+        .frame(width: frame.width, height: frame.height)
+        .position(x: frame.midX, y: frame.midY)
+        .accessibilityLabel("What would you like to do?")
+        .onChange(of: title) { _, newValue in
+            if newValue.count > 60 {
+                title = String(newValue.prefix(60))
+            }
+        }
+    }
+
+    /// Keeps the painted icon, caption, and chevron; replaces only the painted value.
+    private func dateTimeTile(
+        value: String,
+        tile: CGRect,
+        valueLeading: CGFloat,
+        scale: CGFloat,
+        action: @escaping () -> Void
+    ) -> some View {
+        let valueX = tile.minX + valueLeading * scale
+        let valueY = tile.minY + tile.height * 0.66
+        let valueWidth = tile.maxX - 48 * scale - valueX
+
+        return Button(action: action) {
             Color.black.opacity(0.001)
         }
         .buttonStyle(.plain)
-        .frame(width: artworkFrame.width * width, height: artworkFrame.height * 0.058)
-        .position(
-            x: artworkFrame.minX + artworkFrame.width * centerX,
-            y: artworkFrame.minY + artworkFrame.height * centerY
-        )
+        .frame(width: tile.width, height: tile.height)
+        .position(x: tile.midX, y: tile.midY)
+        .background {
+            ZStack(alignment: .topLeading) {
+                Self.tilePaper
+                    .frame(width: valueWidth + 8 * scale, height: 30 * scale)
+                    .position(x: valueX + valueWidth / 2, y: valueY)
+                Text(value)
+                    .font(.system(size: 23 * scale, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Self.valueBlue)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(width: valueWidth, alignment: .leading)
+                    .position(x: valueX + valueWidth / 2, y: valueY)
+            }
+            .allowsHitTesting(false)
+        }
     }
 
-    private func repeatButton(option: AddTaskRepeatOption, artworkFrame: CGRect) -> some View {
-        Button {
+    /// The art paints "None" as selected. When another option is chosen, None is
+    /// redrawn unselected and the chosen tile gets the pink selection treatment.
+    private func repeatButton(option: AddTaskRepeatOption, mapper: ArtworkMapper) -> some View {
+        let rect = mapper.rect(layout.repeatButton(option))
+        let scale = mapper.scale
+        let isSelected = repeatOption == option
+        let corner = 16 * scale
+
+        return Button {
             repeatOption = option
             if option == .tomorrow {
                 dueDate = Self.tomorrowDate(preservingTimeFrom: dueDate)
             }
         } label: {
-            RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
-                .fill(Color.white.opacity(0.001))
-                .overlay(
-                    RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
-                        .stroke(repeatOption == option ? Color(red: 1.0, green: 0.22, blue: 0.50) : .clear, lineWidth: 3)
-                )
+            ZStack {
+                if option == .none && !isSelected {
+                    RoundedRectangle(cornerRadius: corner)
+                        .fill(Self.tilePaper)
+                        .padding(-3 * scale)
+                    HStack(spacing: 10 * scale) {
+                        Image(systemName: "nosign")
+                            .font(.system(size: 24 * scale, weight: .bold))
+                        Text("None")
+                            .font(.system(size: 22 * scale, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(Self.ink)
+                } else if isSelected && option != .none {
+                    RoundedRectangle(cornerRadius: corner)
+                        .fill(Self.selectedPink.opacity(0.10))
+                    RoundedRectangle(cornerRadius: corner)
+                        .stroke(Self.selectedPink, lineWidth: 3)
+                } else {
+                    Color.black.opacity(0.001)
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(option.accessibilityLabel)
-        .frame(width: artworkFrame.width * option.width, height: artworkFrame.height * 0.047)
-        .position(
-            x: artworkFrame.minX + artworkFrame.width * option.centerX,
-            y: artworkFrame.minY + artworkFrame.height * 0.653
-        )
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .frame(width: rect.width, height: rect.height)
+        .position(x: rect.midX, y: rect.midY)
     }
 
     private func pickerSheet<Content: View>(
@@ -2040,194 +2084,75 @@ struct AddTaskSheet: View {
     }
 }
 
-struct AddTaskTextCleanupLayer: View {
-    var artworkFrame: CGRect
+/// Where the Add Task form sits in each order background, in the artwork's own pixels.
+struct OrderArtworkLayout {
+    var artworkSize: CGSize
+    var field: CGRect
+    var placeholder: String
+    var dateTile: CGRect
+    var timeTile: CGRect
+    /// Distance from each tile's left edge to where its painted value text starts.
+    var dateValueLeading: CGFloat
+    var timeValueLeading: CGFloat
+    var repeatRowTop: CGFloat
+    var repeatRowHeight: CGFloat
+    /// Left and right edges of the None, Daily, Weekdays, Weekends, and Tomorrow tiles.
+    var repeatColumns: [ClosedRange<CGFloat>]
+    var addButton: CGRect
+    var closeCenter: CGPoint
 
-    private var paper: Color {
-        Color(red: 1.0, green: 0.91, blue: 0.78).opacity(0.98)
+    func repeatButton(_ option: AddTaskRepeatOption) -> CGRect {
+        let index = AddTaskRepeatOption.allCases.firstIndex(of: option) ?? 0
+        let column = repeatColumns[index]
+        return CGRect(x: column.lowerBound, y: repeatRowTop, width: column.upperBound - column.lowerBound, height: repeatRowHeight)
     }
 
-    private var tilePaper: Color {
-        Color.white.opacity(0.97)
-    }
-
-    private var pinkButton: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 1.0, green: 0.36, blue: 0.58),
-                Color(red: 1.0, green: 0.10, blue: 0.43)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    var body: some View {
-        ZStack {
-            cleanPanel(width: 0.86, height: 0.276, x: 0.50, y: 0.588)
-            cleanupPatch(width: 0.84, height: 0.039, x: 0.50, y: 0.512, color: tilePaper, corner: 0.018)
-            cleanupPatch(width: 0.42, height: 0.046, x: 0.267, y: 0.587, color: tilePaper, corner: 0.018)
-            cleanupPatch(width: 0.36, height: 0.046, x: 0.661, y: 0.587, color: tilePaper, corner: 0.018)
-
-            ForEach(AddTaskRepeatOption.allCases) { option in
-                cleanupPatch(width: option.width, height: 0.043, x: option.centerX, y: 0.653, color: tilePaper, corner: 0.018)
-            }
-
-            buttonPatch(width: 0.36, height: 0.047, x: 0.50, y: 0.702)
-            closeButtonPatch(x: 0.915, y: 0.471)
+    static func layout(for daypart: Daypart) -> OrderArtworkLayout {
+        switch daypart {
+        case .morning: morning
+        case .noon: noon
+        case .night: night
         }
-        .allowsHitTesting(false)
     }
 
-    private func cleanPanel(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: artworkFrame.width * 0.032)
-            .fill(paper)
-            .overlay(
-                RoundedRectangle(cornerRadius: artworkFrame.width * 0.032)
-                    .stroke(Color(red: 0.66, green: 0.38, blue: 0.18).opacity(0.24), lineWidth: 2)
-            )
-            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
-            .position(
-                x: artworkFrame.minX + artworkFrame.width * x,
-                y: artworkFrame.minY + artworkFrame.height * y
-            )
-    }
+    static let morning = OrderArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        field: CGRect(x: 66, y: 909, width: 720, height: 74),
+        placeholder: "What would you like to do?",
+        dateTile: CGRect(x: 68, y: 1042, width: 350, height: 72),
+        timeTile: CGRect(x: 434, y: 1042, width: 350, height: 72),
+        dateValueLeading: 82, timeValueLeading: 72,
+        repeatRowTop: 1172, repeatRowHeight: 66,
+        repeatColumns: [65...190, 203...322, 337...478, 493...633, 648...784],
+        addButton: CGRect(x: 276, y: 1262, width: 298, height: 58),
+        closeCenter: CGPoint(x: 778, y: 871)
+    )
 
-    private func cleanupPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat, color: Color, corner: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: artworkFrame.width * 0.014)
-            .fill(color)
-            .clipShape(RoundedRectangle(cornerRadius: artworkFrame.width * corner))
-            .overlay(
-                RoundedRectangle(cornerRadius: artworkFrame.width * corner)
-                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
-            )
-            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
-            .position(
-                x: artworkFrame.minX + artworkFrame.width * x,
-                y: artworkFrame.minY + artworkFrame.height * y
-            )
-    }
+    static let noon = OrderArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        field: CGRect(x: 67, y: 910, width: 720, height: 72),
+        placeholder: "What would you like to do?",
+        dateTile: CGRect(x: 68, y: 1039, width: 350, height: 74),
+        timeTile: CGRect(x: 434, y: 1039, width: 351, height: 74),
+        dateValueLeading: 82, timeValueLeading: 72,
+        repeatRowTop: 1173, repeatRowHeight: 64,
+        repeatColumns: [67...190, 202...324, 338...479, 493...634, 648...784],
+        addButton: CGRect(x: 275, y: 1261, width: 302, height: 58),
+        closeCenter: CGPoint(x: 780, y: 870)
+    )
 
-    private func buttonPatch(width: CGFloat, height: CGFloat, x: CGFloat, y: CGFloat) -> some View {
-        Capsule()
-            .fill(pinkButton)
-            .shadow(color: Color(red: 0.65, green: 0.05, blue: 0.25).opacity(0.32), radius: 4, y: 2)
-            .frame(width: artworkFrame.width * width, height: artworkFrame.height * height)
-            .position(
-                x: artworkFrame.minX + artworkFrame.width * x,
-                y: artworkFrame.minY + artworkFrame.height * y
-            )
-    }
-
-    private func closeButtonPatch(x: CGFloat, y: CGFloat) -> some View {
-        Circle()
-            .fill(pinkButton)
-            .overlay(
-                Image(systemName: "xmark")
-                    .font(.system(size: max(13, artworkFrame.width * 0.020), weight: .black))
-                    .foregroundStyle(.white)
-            )
-            .shadow(color: Color(red: 0.65, green: 0.05, blue: 0.25).opacity(0.25), radius: 3, y: 1)
-            .frame(width: artworkFrame.width * 0.052, height: artworkFrame.width * 0.052)
-            .position(
-                x: artworkFrame.minX + artworkFrame.width * x,
-                y: artworkFrame.minY + artworkFrame.height * y
-            )
-    }
-}
-
-struct AddTaskStaticTextLayer: View {
-    var titleCount: Int
-    var dateText: String
-    var timeText: String
-    var repeatOption: AddTaskRepeatOption
-    var artworkFrame: CGRect
-
-    private var ink: Color {
-        Color(red: 0.07, green: 0.09, blue: 0.15)
-    }
-
-    private var softInk: Color {
-        Color(red: 0.38, green: 0.43, blue: 0.52)
-    }
-
-    var body: some View {
-        ZStack {
-            Text("Add a Task")
-                .font(.system(size: max(19, artworkFrame.width * 0.030), weight: .black, design: .rounded))
-                .foregroundStyle(ink)
-                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.470)
-
-            Text("Tell Chef what you want to do!")
-                .font(.system(size: max(10, artworkFrame.width * 0.014), weight: .semibold, design: .rounded))
-                .foregroundStyle(ink.opacity(0.84))
-                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.492)
-
-            Text("e.g. Drink water, Read a book, Go for a walk...")
-                .font(.system(size: max(9.5, artworkFrame.width * 0.013), weight: .bold, design: .rounded))
-                .foregroundStyle(softInk.opacity(0.78))
-                .position(x: artworkFrame.midX, y: artworkFrame.minY + artworkFrame.height * 0.544)
-
-            Text("\(titleCount)/60")
-                .font(.system(size: max(9.5, artworkFrame.width * 0.013), weight: .black, design: .rounded))
-                .foregroundStyle(softInk.opacity(0.80))
-                .position(x: artworkFrame.minX + artworkFrame.width * 0.872, y: artworkFrame.minY + artworkFrame.height * 0.532)
-
-            Text("Date & Time")
-                .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .black, design: .rounded))
-                .foregroundStyle(ink)
-                .frame(width: artworkFrame.width * 0.28, alignment: .leading)
-                .position(x: artworkFrame.minX + artworkFrame.width * 0.215, y: artworkFrame.minY + artworkFrame.height * 0.559)
-
-            dateTileLabel("Date", detail: dateText, x: 0.267)
-            dateTileLabel("Time", detail: timeText, x: 0.661)
-
-            Text("Repeat")
-                .font(.system(size: max(14, artworkFrame.width * 0.019), weight: .black, design: .rounded))
-                .foregroundStyle(ink)
-                .frame(width: artworkFrame.width * 0.24, alignment: .leading)
-                .position(x: artworkFrame.minX + artworkFrame.width * 0.203, y: artworkFrame.minY + artworkFrame.height * 0.631)
-
-            ForEach(AddTaskRepeatOption.allCases) { option in
-                repeatLabel(option)
-            }
-        }
-        .allowsHitTesting(false)
-    }
-
-    private func dateTileLabel(_ title: String, detail: String, x: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(title)
-                .font(.system(size: max(9, artworkFrame.width * 0.013), weight: .black, design: .rounded))
-                .foregroundStyle(ink.opacity(0.92))
-            Text(detail)
-                .font(.system(size: max(10, artworkFrame.width * 0.015), weight: .black, design: .rounded))
-                .foregroundStyle(ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.62)
-        }
-        .frame(width: artworkFrame.width * 0.23, alignment: .leading)
-        .position(x: artworkFrame.minX + artworkFrame.width * x, y: artworkFrame.minY + artworkFrame.height * 0.588)
-    }
-
-    private func repeatLabel(_ option: AddTaskRepeatOption) -> some View {
-        VStack(spacing: 1) {
-            Text(option.title)
-                .font(.system(size: max(9.5, artworkFrame.width * 0.0135), weight: .black, design: .rounded))
-                .foregroundStyle(repeatOption == option ? Color(red: 1.0, green: 0.14, blue: 0.43) : ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.62)
-            if let subtitle = option.subtitle {
-                Text(subtitle)
-                    .font(.system(size: max(7.5, artworkFrame.width * 0.0105), weight: .bold, design: .rounded))
-                    .foregroundStyle(softInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-            }
-        }
-        .frame(width: artworkFrame.width * option.width * 0.82)
-        .position(x: artworkFrame.minX + artworkFrame.width * option.centerX, y: artworkFrame.minY + artworkFrame.height * 0.654)
-    }
+    static let night = OrderArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        field: CGRect(x: 65, y: 910, width: 722, height: 69),
+        placeholder: "e.g. Drink water, Read a book, Go for a walk...",
+        dateTile: CGRect(x: 65, y: 1033, width: 353, height: 75),
+        timeTile: CGRect(x: 432, y: 1033, width: 355, height: 75),
+        dateValueLeading: 82, timeValueLeading: 76,
+        repeatRowTop: 1168, repeatRowHeight: 66,
+        repeatColumns: [62...192, 200...326, 338...481, 493...638, 649...786],
+        addButton: CGRect(x: 276, y: 1262, width: 299, height: 56),
+        closeCenter: CGPoint(x: 781, y: 869)
+    )
 }
 
 enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
@@ -2280,26 +2205,6 @@ enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
             return "Sat - Sun"
         default:
             return nil
-        }
-    }
-
-    var centerX: CGFloat {
-        switch self {
-        case .none: 0.151
-        case .daily: 0.305
-        case .weekdays: 0.482
-        case .weekends: 0.660
-        case .tomorrow: 0.827
-        }
-    }
-
-    var width: CGFloat {
-        switch self {
-        case .none: 0.145
-        case .daily: 0.145
-        case .weekdays: 0.175
-        case .weekends: 0.175
-        case .tomorrow: 0.17
         }
     }
 }
