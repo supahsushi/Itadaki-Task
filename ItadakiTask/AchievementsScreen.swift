@@ -183,6 +183,15 @@ struct AchievementDetailView: View {
     }
 
     var body: some View {
+        if UIImage(named: AchievementDetailImage.assetName(for: achievement)) != nil {
+            AchievementDetailImage(achievement: achievement, unlockedText: unlockedDateText)
+        } else {
+            drawnDetail
+        }
+    }
+
+    /// Fallback for an achievement without a finished detail illustration.
+    private var drawnDetail: some View {
         GeometryReader { proxy in
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
@@ -340,6 +349,10 @@ struct AchievementDetailView: View {
         return "Locked"
     }
 
+    private var unlockedDateText: String {
+        achievement.unlockDate?.formatted(date: .abbreviated, time: .shortened) ?? "Not unlocked yet"
+    }
+
     private var rewardStatusText: String {
         if !achievement.isUnlocked {
             return "Reward locked"
@@ -469,6 +482,82 @@ struct AchievementDetailView: View {
                 .stroke(Color(red: 0.95, green: 0.43, blue: 0.56).opacity(0.34), lineWidth: 1.5)
         }
         .shadow(color: Color(red: 0.42, green: 0.18, blue: 0.06).opacity(0.09), radius: 9, y: 5)
+    }
+}
+
+/// A finished, full-page achievement illustration from Screenshots/New Achievement Badges Designs.
+/// Everything is baked into the art except the unlock date, which is written into
+/// the empty Unlocked box so it stays dynamic.
+private struct AchievementDetailImage: View {
+    var achievement: Achievement
+    var unlockedText: String
+
+    /// Size of the source illustrations, in pixels.
+    private static let designSize = CGSize(width: 850, height: 1850)
+    /// Where the date starts inside the Unlocked box, in source pixels.
+    private static let unlockedX: CGFloat = 204
+    /// Vertical center of the Unlocked box's writing line, per achievement, in source pixels.
+    /// Healthy Bite, On the Grind, and Brain Food have no Unlocked box in their art.
+    private static let unlockedY: [String: CGFloat] = [
+        "first-bite": 1440,
+        "full-plate": 1444,
+        "chefs-special": 1441,
+        "three-day-streak": 1439,
+        "seven-day-streak": 1456,
+        "fourteen-day-streak": 1436,
+        "thirty-day-streak": 1459,
+        "sixty-day-streak": 1459,
+        "sushi-regular": 1545,
+        "hundred-day-streak": 1543,
+        "sushi-lover": 1502,
+        "omakase-master": 1553,
+        "active-sushi": 1537,
+        "take-care": 1632,
+        "good-company": 1553
+    ]
+
+    static func assetName(for achievement: Achievement) -> String {
+        achievement.definition.badgeAssetName + "Detail"
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let scale = width / Self.designSize.width
+            let height = Self.designSize.height * scale
+
+            ScrollView(showsIndicators: false) {
+                Image(Self.assetName(for: achievement))
+                    .resizable()
+                    .frame(width: width, height: height)
+                    .overlay(alignment: .topLeading) {
+                        if let dateY = Self.unlockedY[achievement.id] {
+                            Text(unlockedText)
+                                .font(.system(size: 25 * scale, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color(red: 0.36, green: 0.18, blue: 0.08))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .frame(width: 400 * scale, height: 40 * scale, alignment: .leading)
+                                .offset(x: Self.unlockedX * scale, y: dateY * scale - 20 * scale)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(accessibilitySummary)
+            }
+        }
+        .ignoresSafeArea(edges: .bottom)
+        .preferredColorScheme(.light)
+    }
+
+    private var accessibilitySummary: String {
+        [
+            "\(achievement.title) achievement.",
+            achievement.definition.description,
+            "Requirement: \(achievement.definition.requirement).",
+            "Progress: \(achievement.clampedProgress) of \(achievement.target).",
+            achievement.isUnlocked ? "Unlocked \(unlockedText)." : "Not unlocked yet."
+        ].joined(separator: " ")
     }
 }
 
