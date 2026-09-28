@@ -15,6 +15,7 @@ struct ProfileScreen: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var premium = PremiumStore.shared
     @State private var showingPremium = false
+    @State private var showingAlarms = false
     @State private var showingNameEditor = false
     @State private var draftName = ""
 
@@ -74,6 +75,7 @@ struct ProfileScreen: View {
                 totalCard(mapper: mapper)
                 collectionRows(mapper: mapper)
                 premiumButton(mapper: mapper)
+                alarmButton(mapper: mapper)
                 navigationZones(mapper: mapper)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
@@ -83,6 +85,9 @@ struct ProfileScreen: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingPremium) {
             PremiumSheet()
+        }
+        .sheet(isPresented: $showingAlarms) {
+            ChefAlarmPickerSheet()
         }
         .alert("Your name", isPresented: $showingNameEditor) {
             TextField("Name", text: $draftName)
@@ -241,6 +246,30 @@ struct ProfileScreen: View {
         .buttonStyle(.plain)
         .position(mapper.point(CGPoint(x: 426, y: 1398)))
         .accessibilityLabel(premium.isPremium ? "Premium unlocked" : "Unlock Premium reminders")
+    }
+
+    private func alarmButton(mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        return Button {
+            showingAlarms = true
+        } label: {
+            HStack(spacing: 10 * scale) {
+                Image(systemName: "bell.and.waves.left.and.right.fill")
+                    .font(.system(size: 24 * scale, weight: .black))
+                Text(premium.isPremium ? ChefAlarm.displayName(for: ChefAlarm.selected) : "Chef Alarm Sounds")
+                    .font(.system(size: 25 * scale, weight: .black, design: .rounded))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18 * scale, weight: .black))
+            }
+            .foregroundStyle(Self.ink)
+            .frame(width: 420 * scale, height: 56 * scale)
+            .background(Color(red: 1.0, green: 0.95, blue: 0.87), in: Capsule())
+            .overlay(Capsule().stroke(Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 2))
+            .shadow(color: .black.opacity(0.30), radius: 6, y: 3)
+        }
+        .buttonStyle(.plain)
+        .position(mapper.point(CGPoint(x: 426, y: 1476)))
+        .accessibilityLabel("Chef alarm sounds")
     }
 
     /// The bottom menu is painted into the art; Home is this screen.

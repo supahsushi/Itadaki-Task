@@ -602,6 +602,10 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .premiumStatusChanged)) { _ in
             syncRemindersWithPremium()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .chefAlarmChanged)) { _ in
+            // Scheduled reminders keep the sound they were created with, so reschedule them.
+            syncRemindersWithPremium()
+        }
         .onChange(of: showingAchievements) { _, isPresented in
             guard !isPresented else { return }
             presentNextPendingCustomerArrivalIfNeeded()
@@ -1122,11 +1126,10 @@ final class LocalNotificationScheduler: @unchecked Sendable {
 
     private init() {}
 
-    /// Bundled Chef alarm sound (any of these names), used when present; otherwise the default sound.
-    /// Notification sounds must be 30 seconds or shorter.
-    private static let chefSoundFile: String? = ["ChefAlarm.caf", "ChefAlarm.wav", "ChefAlarm.aiff"].first {
-        let parts = $0.split(separator: ".")
-        return Bundle.main.url(forResource: String(parts[0]), withExtension: String(parts[1])) != nil
+    /// The Premium Chef alarm the user picked, or nil to fall back to the default sound.
+    private static var chefSoundFile: String? {
+        let name = ChefAlarm.selected
+        return ChefAlarm.url(for: name) == nil ? nil : "\(name).caf"
     }
 
     /// Scheduled reminders are a Premium feature.

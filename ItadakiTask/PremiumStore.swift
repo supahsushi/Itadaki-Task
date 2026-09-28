@@ -1,3 +1,4 @@
+import AVFoundation
 import StoreKit
 import SwiftUI
 
@@ -232,5 +233,140 @@ struct PremiumSheet: View {
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(ink)
         }
+    }
+}
+
+extension Notification.Name {
+    static let chefAlarmChanged = Notification.Name("chefAlarmChanged")
+}
+
+/// The Premium reminder sounds bundled in Sounds/ (each under 30 seconds, as iOS requires).
+enum ChefAlarm {
+    static let fileNames = ["ChefAlarm001", "ChefAlarm002", "ChefAlarm003", "ChefAlarm004", "ChefAlarm005"]
+    nonisolated private static let selectionKey = "sushiChefAlarm"
+
+    static func displayName(for fileName: String) -> String {
+        guard let index = fileNames.firstIndex(of: fileName) else { return "Chef Alarm" }
+        return "Chef Alarm \(index + 1)"
+    }
+
+    /// The chosen sound's file name, readable from the reminder scheduler.
+    nonisolated static var selected: String {
+        get {
+            let stored = UserDefaults.standard.string(forKey: selectionKey) ?? ""
+            return fileNames.contains(stored) ? stored : fileNames[0]
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: selectionKey)
+            NotificationCenter.default.post(name: .chefAlarmChanged, object: nil)
+        }
+    }
+
+    nonisolated static func url(for fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "caf")
+    }
+}
+
+/// Lists the Chef alarms with previews. Anyone can listen; choosing one is Premium.
+struct ChefAlarmPickerSheet: View {
+    @ObservedObject private var premium = PremiumStore.shared
+    @State private var selected = ChefAlarm.selected
+    @State private var playing: String?
+    @State private var player: AVAudioPlayer?
+    @State private var showingPremium = false
+
+    private let ink = Color(red: 0.19, green: 0.11, blue: 0.06)
+    private let pink = Color(red: 1.0, green: 0.22, blue: 0.50)
+
+    var body: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 4) {
+                Text("Chef Alarm 🔔")
+                    .font(.system(size: 26, weight: .black, design: .rounded))
+                Text(premium.isPremium ? "Pick the sound for your reminders" : "Preview the sounds. Choosing one is Premium.")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(ink.opacity(0.6))
+                    .multilineTextAlignment(.center)
+            }
+            .foregroundStyle(ink)
+            .padding(.top, 24)
+
+            VStack(spacing: 10) {
+                ForEach(ChefAlarm.fileNames, id: \.self) { name in
+                    row(name)
+                }
+            }
+            .padding(.horizontal, 18)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(red: 0.99, green: 0.92, blue: 0.84).ignoresSafeArea())
+        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.light)
+        .sheet(isPresented: $showingPremium) {
+            PremiumSheet()
+        }
+        .onDisappear { stop() }
+    }
+
+    private func row(_ name: String) -> some View {
+        let isSelected = premium.isPremium && selected == name
+        return HStack(spacing: 12) {
+            Button {
+                playing == name ? stop() : play(name)
+            } label: {
+                Image(systemName: playing == name ? "stop.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(pink)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(playing == name ? "Stop preview" : "Preview \(ChefAlarm.displayName(for: name))")
+
+            Text(ChefAlarm.displayName(for: name))
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(ink)
+
+            Spacer()
+
+            Button {
+                guard premium.isPremium else {
+                    showingPremium = true
+                    return
+                }
+                selected = name
+                ChefAlarm.selected = name
+            } label: {
+                if isSelected {
+                    Label("Selected", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Label("Use", systemImage: premium.isPremium ? "circle" : "crown.fill")
+                        .foregroundStyle(premium.isPremium ? ink.opacity(0.7) : Color(red: 0.95, green: 0.68, blue: 0.10))
+                }
+            }
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 56)
+        .background(Color.white.opacity(isSelected ? 0.95 : 0.7), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isSelected ? pink : .clear, lineWidth: 2))
+    }
+
+    private func play(_ name: String) {
+        stop()
+        guard let url = ChefAlarm.url(for: name) else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playback)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player = try? AVAudioPlayer(contentsOf: url)
+        player?.play()
+        playing = name
+    }
+
+    private func stop() {
+        player?.stop()
+        player = nil
+        playing = nil
     }
 }
