@@ -353,6 +353,9 @@ struct ContentView: View {
     @AppStorage("sushiCollectionStates") private var sushiCollectionStates = ""
     @AppStorage("sushiPendingCustomerArrivals") private var sushiPendingCustomerArrivals = ""
     @AppStorage("sushiAskedHealthKit") private var hasAskedHealthKit = false
+    @AppStorage("sushiRepairedSkippedWelcomes") private var hasRepairedSkippedWelcomes = false
+    /// Achievements whose customer is being welcomed again, so First Visited uses the welcome day.
+    @AppStorage("sushiReplayWelcomeAchievementIDs") private var sushiReplayWelcomeAchievementIDs = ""
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
@@ -448,6 +451,7 @@ struct ContentView: View {
             resetMealIfNeeded()
             migrateLegacyAchievementUnlocksIfNeeded()
             evaluateAchievements()
+            repairSkippedWelcomesIfNeeded()
             migrateCollectionUnlocksIfNeeded()
             presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
@@ -763,10 +767,18 @@ struct ContentView: View {
         let remainingPendingIDs = decodedStringArray(sushiPendingAchievementUnlocks).filter { $0 != achievement.id }
         sushiPendingAchievementUnlocks = Self.encoded(remainingPendingIDs)
 
-        if let result = CollectionManager.unlockCharacter(
-            for: achievement,
-            states: decodedCollectionStates()
-        ) {
+        var replayIDs = decodedStringSet(sushiReplayWelcomeAchievementIDs)
+        let isReplayedWelcome = replayIDs.remove(achievement.id) != nil
+        sushiReplayWelcomeAchievementIDs = Self.encoded(replayIDs)
+
+        let unlockResult: CollectionUnlockResult?
+        if isReplayedWelcome, let characterID = CollectionManager.characterID(for: achievement.id) {
+            unlockResult = CollectionManager.unlockCharacter(id: characterID, states: decodedCollectionStates(), metAt: .now)
+        } else {
+            unlockResult = CollectionManager.unlockCharacter(for: achievement, states: decodedCollectionStates())
+        }
+
+        if let result = unlockResult {
             sushiCollectionStates = Self.encoded(result.states)
             if let character = result.newlyUnlocked {
                 enqueueCustomerArrival(character.id)
@@ -915,6 +927,32 @@ struct ContentView: View {
             )
         }
         sushiAchievementStates = Self.encoded(migratedStates)
+    }
+
+    /// One-time repair: the legacy achievement migration unlocked some characters directly,
+    /// skipping the gachapon reveal and the New Customer welcome. Send those back through
+    /// the normal flow. Their achievement dates are kept; First Visited becomes the welcome day.
+    private func repairSkippedWelcomesIfNeeded() {
+        guard !hasRepairedSkippedWelcomes else { return }
+        hasRepairedSkippedWelcomes = true
+
+        let collectedIDs = decodedStringSet(sushiCollectedAchievementUnlocks)
+        var pendingIDs = decodedStringArray(sushiPendingAchievementUnlocks)
+        let skippedIDs = achievements
+            .filter { $0.isUnlocked && !collectedIDs.contains($0.id) && !pendingIDs.contains($0.id) }
+            .map(\.id)
+            .filter { CollectionManager.characterID(for: $0) != nil }
+        guard !skippedIDs.isEmpty else { return }
+
+        let characterIDs = Set(skippedIDs.compactMap { CollectionManager.characterID(for: $0) })
+        let relockedStates = decodedCollectionStates().map { state in
+            characterIDs.contains(state.id) ? CollectionCharacterState(id: state.id, dateFirstMet: nil) : state
+        }
+        sushiCollectionStates = Self.encoded(relockedStates)
+
+        pendingIDs.append(contentsOf: skippedIDs)
+        sushiPendingAchievementUnlocks = Self.encoded(pendingIDs)
+        sushiReplayWelcomeAchievementIDs = Self.encoded(decodedStringSet(sushiReplayWelcomeAchievementIDs).union(skippedIDs))
     }
 
     private func migrateCollectionUnlocksIfNeeded() {
