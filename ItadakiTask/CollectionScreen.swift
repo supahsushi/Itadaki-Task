@@ -704,6 +704,11 @@ private struct ProfileCardImage: View {
         character.artworkAssetName + "Profile"
     }
 
+    /// Shown on every visit until the player has zoomed once.
+    @AppStorage("sushiLearnedProfileZoom") private var learnedZoom = false
+    @State private var showingZoomHint = false
+    @State private var isZoomed = false
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
@@ -712,7 +717,14 @@ private struct ProfileCardImage: View {
             let dateY = (Self.firstVisitedY[character.id] ?? 1670) * scale
 
             ZStack(alignment: .topLeading) {
-                ScrollView(showsIndicators: false) {
+                // Double-tap (or pinch) to zoom so the small painted text is readable.
+                ZoomableScrollView(contentSize: CGSize(width: width, height: height)) { zoomed in
+                    isZoomed = zoomed
+                    if zoomed {
+                        learnedZoom = true
+                        withAnimation(.easeOut(duration: 0.2)) { showingZoomHint = false }
+                    }
+                } content: {
                     Image(Self.assetName(for: character))
                         .resizable()
                         .frame(width: width, height: height)
@@ -746,10 +758,36 @@ private struct ProfileCardImage: View {
                 // The ZStack already sits inside the safe area, so this is just below the status bar.
                 .padding(.leading, 10)
                 .padding(.top, 8)
+
+                if showingZoomHint {
+                    zoomHint
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 24)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .allowsHitTesting(false)
+                }
             }
         }
         // Dark only so the status bar text turns white over the artwork.
         .preferredColorScheme(.dark)
+        .onAppear {
+            guard !learnedZoom else { return }
+            withAnimation(.easeOut(duration: 0.3).delay(0.4)) { showingZoomHint = true }
+        }
+    }
+
+    private var zoomHint: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "hand.tap.fill")
+            Text("Double-tap to zoom in and read")
+        }
+        .font(.system(size: 17, weight: .bold, design: .rounded))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(Color.black.opacity(0.62), in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.35), lineWidth: 1))
+        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
     }
 
     private var accessibilitySummary: String {
@@ -946,6 +984,94 @@ private struct MakiIcon: View {
                     .offset(x: size * 0.10, y: -size * 0.08)
             }
             .frame(width: size, height: size)
+        }
+    }
+}
+
+/// A UIKit scroll view that pinches and double-taps to zoom its SwiftUI content,
+/// which SwiftUI's own ScrollView can't do.
+private struct ZoomableScrollView<Content: View>: UIViewRepresentable {
+    var contentSize: CGSize
+    var onZoomChange: (Bool) -> Void
+    @ViewBuilder var content: Content
+
+    private static var maxZoom: CGFloat { 4 }
+    private static var doubleTapZoom: CGFloat { 2.5 }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(host: UIHostingController(rootView: content), onZoomChange: onZoomChange)
+    }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = Self.maxZoom
+        scrollView.bouncesZoom = true
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.backgroundColor = .clear
+
+        let host = context.coordinator.host
+        host.safeAreaRegions = []
+        host.view.backgroundColor = .clear
+        host.view.frame = CGRect(origin: .zero, size: contentSize)
+        scrollView.addSubview(host.view)
+        scrollView.contentSize = contentSize
+
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.doubleTapped(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+        context.coordinator.scrollView = scrollView
+        return scrollView
+    }
+
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.host.rootView = content
+        coordinator.onZoomChange = onZoomChange
+        if scrollView.zoomScale <= 1.001, coordinator.host.view.frame.size != contentSize {
+            coordinator.host.view.frame = CGRect(origin: .zero, size: contentSize)
+            scrollView.contentSize = contentSize
+        }
+    }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        let host: UIHostingController<Content>
+        var onZoomChange: (Bool) -> Void
+        weak var scrollView: UIScrollView?
+
+        init(host: UIHostingController<Content>, onZoomChange: @escaping (Bool) -> Void) {
+            self.host = host
+            self.onZoomChange = onZoomChange
+        }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            host.view
+        }
+
+        func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+            onZoomChange(scale > 1.01)
+        }
+
+        @objc func doubleTapped(_ recognizer: UITapGestureRecognizer) {
+            guard let scrollView else { return }
+            if scrollView.zoomScale > 1.01 {
+                scrollView.setZoomScale(1, animated: true)
+                onZoomChange(false)
+            } else {
+                let point = recognizer.location(in: host.view)
+                let size = CGSize(
+                    width: scrollView.bounds.width / ZoomableScrollView.doubleTapZoom,
+                    height: scrollView.bounds.height / ZoomableScrollView.doubleTapZoom
+                )
+                scrollView.zoom(
+                    to: CGRect(x: point.x - size.width / 2, y: point.y - size.height / 2, width: size.width, height: size.height),
+                    animated: true
+                )
+                onZoomChange(true)
+            }
         }
     }
 }
