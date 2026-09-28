@@ -410,6 +410,9 @@ struct ContentView: View {
     @AppStorage("customerName") private var customerName = ""
     @AppStorage("hasAskedCustomerName") private var hasAskedCustomerName = false
     @AppStorage("sushiTasks") private var storedTasks = ""
+    /// Task IDs in the order the user dragged them on the board. Tasks not listed
+    /// (never reordered, or added since) follow in time order.
+    @AppStorage("sushiTaskOrder") private var storedTaskOrder = ""
     @AppStorage("sushiEatenToday") private var sushiEatenToday = 0
     @AppStorage("sushiMealDayKey") private var sushiMealDayKey = ""
     @AppStorage("sushiTotalCompletions") private var sushiTotalCompletions = 0
@@ -516,6 +519,9 @@ struct ContentView: View {
                         },
                         edit: { task in
                             activeScreen = .editing(task)
+                        },
+                        move: { source, destination in
+                            moveTask(from: source, to: destination)
                         }
                     )
                     .frame(width: rowArea.width, height: rowArea.height)
@@ -680,7 +686,32 @@ struct ContentView: View {
     }
 
     private var activeTasks: [SushiTask] {
-        todaysTasks.filter { !$0.isEaten }.sorted(by: SushiTask.boardOrder)
+        let order = taskOrderIndex
+        return todaysTasks.filter { !$0.isEaten }.sorted { lhs, rhs in
+            switch (order[lhs.id.uuidString], order[rhs.id.uuidString]) {
+            case let (left?, right?): return left < right
+            case (.some, nil): return true
+            case (nil, .some): return false
+            case (nil, nil): return SushiTask.boardOrder(lhs, rhs)
+            }
+        }
+    }
+
+    private var taskOrderIndex: [String: Int] {
+        let ids = decodedStringArray(storedTaskOrder)
+        return Dictionary(ids.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Saves the board's new order after a drag.
+    private func moveTask(from source: Int, to destination: Int) {
+        var visible = activeTasks.map(\.id.uuidString)
+        guard visible.indices.contains(source), visible.indices.contains(destination), source != destination else { return }
+        let moved = visible.remove(at: source)
+        visible.insert(moved, at: destination)
+        let others = decodedStringArray(storedTaskOrder).filter { !visible.contains($0) }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+            storedTaskOrder = Self.encoded(visible + others)
+        }
     }
 
     private var todaysTasks: [SushiTask] {
@@ -1621,6 +1652,12 @@ struct TaskBoardView: View {
     var complete: (SushiTask) -> Void
     var delete: (SushiTask) -> Void
     var edit: (SushiTask) -> Void
+    var move: (Int, Int) -> Void
+
+    @State private var draggingID: SushiTask.ID?
+    @State private var dragOffset: CGFloat = 0
+
+    private var pitch: CGFloat { rowHeight + rowSpacing }
 
     var body: some View {
         VStack(spacing: 5) {
@@ -1630,33 +1667,98 @@ struct TaskBoardView: View {
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: rowSpacing) {
-                    ForEach(tasks) { task in
-                        SwipeToDeleteRow(rowHeight: rowHeight) {
-                            delete(task)
-                        } content: { isSwiping in
-                            TaskRow(
-                                task: task,
-                                daypart: daypart,
-                                mealIsFull: mealIsFull,
-                                isEating: recentlyEatenTaskIDs.contains(task.id),
-                                rowHeight: rowHeight,
-                                edit: {
-                                    guard !isSwiping else { return }
-                                    edit(task)
-                                }
-                            ) {
-                                // A left swipe often starts on the check circle; don't let it complete the task.
-                                guard !isSwiping else { return }
-                                complete(task)
-                            }
-                        }
-                        .transition(.asymmetric(insertion: .identity, removal: .move(edge: .leading).combined(with: .opacity)))
+                    ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                        row(task, index: index)
                     }
                 }
             }
+            .scrollDisabled(draggingID != nil)
             .frame(maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func row(_ task: SushiTask, index: Int) -> some View {
+        let isDragging = draggingID == task.id
+        return SwipeToDeleteRow(rowHeight: rowHeight) {
+            delete(task)
+        } content: { isSwiping in
+            TaskRow(
+                task: task,
+                daypart: daypart,
+                mealIsFull: mealIsFull,
+                isEating: recentlyEatenTaskIDs.contains(task.id),
+                rowHeight: rowHeight,
+                edit: {
+                    guard !isSwiping, draggingID == nil else { return }
+                    edit(task)
+                }
+            ) {
+                // A left swipe often starts on the check circle; don't let it complete the task.
+                guard !isSwiping, draggingID == nil else { return }
+                complete(task)
+            }
+        }
+        // The dotted grip on the left edge drags the row up or down.
+        .overlay(alignment: .leading) {
+            Color.black.opacity(0.001)
+                .frame(width: rowHeight * 0.9, height: rowHeight)
+                .highPriorityGesture(reorderGesture(for: task, at: index))
+                .accessibilityHidden(true)
+        }
+        .offset(y: isDragging ? dragOffset : shift(for: index))
+        .scaleEffect(isDragging ? 1.03 : 1)
+        .shadow(color: .black.opacity(isDragging ? 0.25 : 0), radius: 8, y: 4)
+        .zIndex(isDragging ? 1 : 0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: shift(for: index))
+        .accessibilityActions {
+            if index > 0 {
+                Button("Move up") { move(index, index - 1) }
+            }
+            if index < tasks.count - 1 {
+                Button("Move down") { move(index, index + 1) }
+            }
+        }
+        .transition(.asymmetric(insertion: .identity, removal: .move(edge: .leading).combined(with: .opacity)))
+    }
+
+    private var draggingIndex: Int? {
+        tasks.firstIndex { $0.id == draggingID }
+    }
+
+    private var targetIndex: Int? {
+        guard let from = draggingIndex else { return nil }
+        let steps = Int((dragOffset / pitch).rounded())
+        return min(max(from + steps, 0), tasks.count - 1)
+    }
+
+    /// Slides the rows between the dragged row's old and new spot out of its way.
+    private func shift(for index: Int) -> CGFloat {
+        guard let from = draggingIndex, let to = targetIndex, index != from else { return 0 }
+        if from < to, index > from, index <= to { return -pitch }
+        if from > to, index < from, index >= to { return pitch }
+        return 0
+    }
+
+    private func reorderGesture(for task: SushiTask, at index: Int) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                if draggingID == nil {
+                    draggingID = task.id
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+                dragOffset = value.translation.height
+            }
+            .onEnded { _ in
+                let from = draggingIndex
+                let to = targetIndex
+                draggingID = nil
+                dragOffset = 0
+                if let from, let to, from != to {
+                    move(from, to)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
     }
 }
 
