@@ -349,6 +349,20 @@ struct HomeArtworkLayout {
         labelCenter: CGPoint(x: 740, y: 162), labelFontSize: 22, labelText: "Sushi Eaten Today"
     )
 
+    /// The Add Task art's empty name and sushi-count panels (same frame as the profile art).
+    static let orderHeader = HomeArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        profilePatch: nil,
+        nameLeadingX: 127, nameCenterY: 116, nameFontSize: 25,
+        levelCenterY: 142, levelFontSize: 20,
+        meterRect: CGRect(x: 127, y: 156, width: 93, height: 10),
+        meterFill: dayMeter,
+        countPatch: nil,
+        countCenter: CGPoint(x: 772, y: 118), countFontSize: 40,
+        labelPatch: nil,
+        labelCenter: CGPoint(x: 733, y: 160), labelFontSize: 21, labelText: "sushi eaten today"
+    )
+
     static let dayThank = HomeArtworkLayout(
         artworkSize: CGSize(width: 851, height: 1848),
         profilePatch: Patch(rect: CGRect(x: 118, y: 96, width: 107, height: 72), top: brown(0.304, 0.111, 0.040), bottom: brown(0.289, 0.113, 0.056)),
@@ -593,6 +607,10 @@ struct ContentView: View {
         }
     }
 
+    private var menuHeader: GachaponHeader {
+        GachaponHeader(name: displayName, levelInfo: streakLevelInfo, eatenCount: sushiEatenToday, maxCount: mealLimit)
+    }
+
     private func menuScreenDismissed() {
         presentNextPendingCustomerArrivalIfNeeded()
         presentNextPendingAchievementUnlockIfNeeded()
@@ -617,6 +635,7 @@ struct ContentView: View {
             case .orders:
                 AddTaskSheet(
                     daypart: daypart,
+                    header: menuHeader,
                     addTask: { task in
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
                             tasks.append(task)
@@ -631,6 +650,7 @@ struct ContentView: View {
                 AddTaskSheet(
                     daypart: daypart,
                     editing: task,
+                    header: menuHeader,
                     addTask: { updated in
                         update(updated)
                     },
@@ -1849,6 +1869,8 @@ struct AddTaskSheet: View {
     var daypart: Daypart
     /// The task being edited, or nil when adding a new one.
     var editing: SushiTask? = nil
+    /// Live name, level, and sushi count for the empty top panels in the art.
+    var header: GachaponHeader? = nil
     var addTask: (SushiTask) -> Void
     var openMenuDestination: (AddTaskMenuDestination) -> Void
 
@@ -1867,11 +1889,13 @@ struct AddTaskSheet: View {
     init(
         daypart: Daypart,
         editing: SushiTask? = nil,
+        header: GachaponHeader? = nil,
         addTask: @escaping (SushiTask) -> Void,
         openMenuDestination: @escaping (AddTaskMenuDestination) -> Void
     ) {
         self.daypart = daypart
         self.editing = editing
+        self.header = header
         self.addTask = addTask
         self.openMenuDestination = openMenuDestination
         _title = State(initialValue: editing?.title ?? "")
@@ -1924,9 +1948,17 @@ struct AddTaskSheet: View {
                     openMenuDestination(.achievements)
                 }
 
+                if let header {
+                    ProfileStreakLevelOverlay(name: header.name, levelInfo: header.levelInfo, layout: .orderHeader, mapper: headerMapper(for: artworkFrame))
+                    MealCountOverlay(eatenCount: header.eatenCount, maxCount: header.maxCount, layout: .orderHeader, mapper: headerMapper(for: artworkFrame))
+                }
+
+                formLabels(mapper: mapper)
+
                 titleField(frame: field, scale: mapper.scale)
 
                 dateTimeTile(
+                    caption: "Date",
                     value: dateText,
                     tile: mapper.rect(layout.dateTile),
                     valueLeading: layout.dateValueLeading,
@@ -1937,6 +1969,7 @@ struct AddTaskSheet: View {
                 .accessibilityLabel("Choose task date, \(dateText)")
 
                 dateTimeTile(
+                    caption: "Time",
                     value: timeText,
                     tile: mapper.rect(layout.timeTile),
                     valueLeading: layout.timeValueLeading,
@@ -2146,13 +2179,18 @@ struct AddTaskSheet: View {
     }
 
     private var dateText: String {
-        if Calendar.current.isDateInToday(dueDate) {
-            return "Today, \(dueDate.formatted(.dateTime.month(.abbreviated).day().year()))"
+        let calendar = Calendar.current
+        let sameYear = calendar.isDate(dueDate, equalTo: .now, toGranularity: .year)
+        let day = sameYear
+            ? dueDate.formatted(.dateTime.month(.abbreviated).day())
+            : dueDate.formatted(.dateTime.month(.abbreviated).day().year())
+        if calendar.isDateInToday(dueDate) {
+            return "Today, \(day)"
         }
-        if Calendar.current.isDateInTomorrow(dueDate) {
-            return "Tomorrow"
+        if calendar.isDateInTomorrow(dueDate) {
+            return "Tomorrow, \(day)"
         }
-        return dueDate.formatted(.dateTime.month(.abbreviated).day().year())
+        return day
     }
 
     private var timeText: String {
@@ -2173,7 +2211,7 @@ struct AddTaskSheet: View {
 
             if title.isEmpty {
                 Text(layout.placeholder)
-                    .font(.system(size: 26 * scale, weight: .medium, design: .rounded))
+                    .font(.system(size: 30 * scale, weight: .medium, design: .rounded))
                     .foregroundStyle(Color(red: 0.55, green: 0.60, blue: 0.70))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -2182,7 +2220,7 @@ struct AddTaskSheet: View {
             }
 
             TextField("", text: $title)
-                .font(.system(size: 27 * scale, weight: .bold, design: .rounded))
+                .font(.system(size: 31 * scale, weight: .bold, design: .rounded))
                 .foregroundStyle(Self.ink)
                 .submitLabel(.done)
                 .textFieldStyle(.plain)
@@ -2191,7 +2229,7 @@ struct AddTaskSheet: View {
         }
         .overlay(alignment: .bottomTrailing) {
             Text("\(min(title.count, 60))/60")
-                .font(.system(size: 18 * scale, weight: .medium, design: .rounded))
+                .font(.system(size: 21 * scale, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(red: 0.45, green: 0.50, blue: 0.58))
                 .padding(.trailing, 14 * scale)
                 .padding(.bottom, 8 * scale)
@@ -2209,6 +2247,7 @@ struct AddTaskSheet: View {
 
     /// Keeps the painted icon, caption, and chevron; replaces only the painted value.
     private func dateTimeTile(
+        caption: String,
         value: String,
         tile: CGRect,
         valueLeading: CGFloat,
@@ -2217,6 +2256,7 @@ struct AddTaskSheet: View {
     ) -> some View {
         let valueX = tile.minX + valueLeading * scale
         let valueY = tile.minY + tile.height * 0.66
+        let captionY = tile.minY + tile.height * 0.32
         let valueWidth = tile.maxX - 48 * scale - valueX
 
         return Button(action: action) {
@@ -2227,11 +2267,17 @@ struct AddTaskSheet: View {
         .position(x: tile.midX, y: tile.midY)
         .background {
             ZStack(alignment: .topLeading) {
+                // Covers the painted caption and value, which are too small to read.
                 Self.tilePaper
-                    .frame(width: valueWidth + 8 * scale, height: 30 * scale)
-                    .position(x: valueX + valueWidth / 2, y: valueY)
+                    .frame(width: valueWidth + 8 * scale, height: tile.height - 10 * scale)
+                    .position(x: valueX + valueWidth / 2, y: tile.midY)
+                Text(caption)
+                    .font(.system(size: 24 * scale, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Self.ink)
+                    .frame(width: valueWidth, alignment: .leading)
+                    .position(x: valueX + valueWidth / 2, y: captionY)
                 Text(value)
-                    .font(.system(size: 23 * scale, weight: .semibold, design: .rounded))
+                    .font(.system(size: 30 * scale, weight: .bold, design: .rounded))
                     .foregroundStyle(Self.valueBlue)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -2242,8 +2288,7 @@ struct AddTaskSheet: View {
         }
     }
 
-    /// The art paints "None" as selected. When another option is chosen, None is
-    /// redrawn unselected and the chosen tile gets the pink selection treatment.
+    /// Drawn over the painted repeat tiles, whose labels are too small to read.
     private func repeatButton(option: AddTaskRepeatOption, mapper: ArtworkMapper) -> some View {
         let rect = mapper.rect(layout.repeatButton(option))
         let scale = mapper.scale
@@ -2257,32 +2302,91 @@ struct AddTaskSheet: View {
             }
         } label: {
             ZStack {
-                if option == .none && !isSelected {
-                    RoundedRectangle(cornerRadius: corner)
-                        .fill(Self.tilePaper)
-                        .padding(-3 * scale)
-                    HStack(spacing: 10 * scale) {
-                        Image(systemName: "nosign")
-                            .font(.system(size: 24 * scale, weight: .bold))
-                        Text("None")
-                            .font(.system(size: 22 * scale, weight: .medium, design: .rounded))
+                RoundedRectangle(cornerRadius: corner)
+                    .fill(isSelected ? Color(red: 1.0, green: 0.92, blue: 0.94) : Self.tilePaper)
+                RoundedRectangle(cornerRadius: corner)
+                    .stroke(isSelected ? Self.selectedPink : Color(red: 0.91, green: 0.84, blue: 0.78), lineWidth: isSelected ? 3 : 1)
+                VStack(spacing: 1 * scale) {
+                    Text(option.title)
+                        .font(.system(size: 26 * scale, weight: .bold, design: .rounded))
+                        .foregroundStyle(isSelected ? Self.selectedPink : Self.ink)
+                    if let subtitle = option.subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 19 * scale, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Self.ink.opacity(0.6))
                     }
-                    .foregroundStyle(Self.ink)
-                } else if isSelected && option != .none {
-                    RoundedRectangle(cornerRadius: corner)
-                        .fill(Self.selectedPink.opacity(0.10))
-                    RoundedRectangle(cornerRadius: corner)
-                        .stroke(Self.selectedPink, lineWidth: 3)
-                } else {
-                    Color.black.opacity(0.001)
                 }
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .padding(.horizontal, 6 * scale)
             }
+            .padding(-2 * scale)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(option.accessibilityLabel)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .frame(width: rect.width, height: rect.height)
         .position(x: rect.midX, y: rect.midY)
+    }
+
+    /// The paper color behind the painted form labels.
+    private static let formPaper = Color(red: 0.983, green: 0.924, blue: 0.862)
+
+    private func paperPatch(_ rect: CGRect, mapper: ArtworkMapper) -> some View {
+        let frame = mapper.rect(rect)
+        return RoundedRectangle(cornerRadius: 8 * mapper.scale)
+            .fill(Self.formPaper)
+            .frame(width: frame.width, height: frame.height)
+            .blur(radius: 2 * mapper.scale)
+            .position(x: frame.midX, y: frame.midY)
+    }
+
+    /// Redraws the painted subtitle, hint, and section headings at a readable size.
+    private func formLabels(mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        let field = layout.field
+        let subtitleY = field.minY - 18
+        let hintY = field.maxY + 13
+        let dateHeadingY = layout.dateTile.minY - 24
+        let repeatHeadingY = (layout.timeTile.maxY + layout.repeatRowTop) / 2
+
+        return ZStack(alignment: .topLeading) {
+            paperPatch(CGRect(x: 250, y: subtitleY - 14, width: 350, height: 28), mapper: mapper)
+            Text("Tell Chef what you want to do!")
+                .font(.system(size: 26 * scale, weight: .semibold, design: .rounded))
+                .foregroundStyle(Self.ink)
+                .position(mapper.point(CGPoint(x: 425, y: subtitleY)))
+
+            // The painted example hint has no room at a readable size next to the
+            // larger heading, so it's covered; the field's placeholder guides instead.
+            if layout.hintBelowField {
+                paperPatch(CGRect(x: 230, y: hintY - 14, width: 390, height: 28), mapper: mapper)
+            }
+
+            paperPatch(CGRect(x: field.minX - 4, y: dateHeadingY - 18, width: 220, height: 36), mapper: mapper)
+            heading("Date & Time", icon: "clock", y: dateHeadingY, mapper: mapper)
+
+            paperPatch(CGRect(x: field.minX - 4, y: repeatHeadingY - 18, width: 230, height: 36), mapper: mapper)
+            heading("Repeat", icon: "arrow.triangle.2.circlepath", y: repeatHeadingY, mapper: mapper)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func heading(_ text: String, icon: String, y: CGFloat, mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        return HStack(spacing: 10 * scale) {
+            Image(systemName: icon)
+                .font(.system(size: 28 * scale, weight: .bold))
+            Text(text)
+                .font(.system(size: 30 * scale, weight: .bold, design: .rounded))
+        }
+        .foregroundStyle(Self.ink)
+        .frame(width: 240 * scale, alignment: .leading)
+        .position(mapper.point(CGPoint(x: layout.field.minX + 120, y: y)))
+    }
+
+    private func headerMapper(for artworkFrame: CGRect) -> ArtworkMapper {
+        ArtworkMapper(frame: artworkFrame, artworkSize: HomeArtworkLayout.orderHeader.artworkSize)
     }
 
     private func pickerSheet<Content: View>(
@@ -2356,6 +2460,8 @@ struct OrderArtworkLayout {
     var repeatColumns: [ClosedRange<CGFloat>]
     var addButton: CGRect
     var closeCenter: CGPoint
+    /// Morning and noon paint an example hint under the field; night paints it inside.
+    var hintBelowField = true
 
     func repeatButton(_ option: AddTaskRepeatOption) -> CGRect {
         let index = AddTaskRepeatOption.allCases.firstIndex(of: option) ?? 0
@@ -2407,7 +2513,8 @@ struct OrderArtworkLayout {
         repeatRowTop: 1168, repeatRowHeight: 66,
         repeatColumns: [62...192, 200...326, 338...481, 493...638, 649...786],
         addButton: CGRect(x: 276, y: 1262, width: 299, height: 56),
-        closeCenter: CGPoint(x: 781, y: 869)
+        closeCenter: CGPoint(x: 781, y: 869),
+        hintBelowField: false
     )
 }
 
