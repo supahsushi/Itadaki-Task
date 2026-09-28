@@ -7,8 +7,6 @@ struct GachaponUnlockView: View {
     @State private var machineShake = false
     @State private var knobTurns = false
     @State private var capsuleDrops = false
-    @State private var capsuleBounces = false
-    @State private var capsuleOpens = false
     @State private var badgeAppears = false
     @State private var textAppears = false
     @State private var canCollect = false
@@ -54,14 +52,6 @@ struct GachaponUnlockView: View {
         let landedY = size.height * 0.69
 
         return ZStack {
-            UnlockCapsuleView(isOpen: capsuleOpens)
-                .frame(width: capsuleSize, height: capsuleSize * 0.74)
-                .scaleEffect(capsuleOpens ? 1.1 : capsuleBounces ? 1.08 : 1)
-                .offset(y: capsuleDrops ? landedY - startY : 0)
-                .animation(.easeIn(duration: 1.0), value: capsuleDrops)
-                .animation(.interpolatingSpring(stiffness: 95, damping: 8).speed(0.75), value: capsuleBounces)
-                .animation(.spring(response: 0.75, dampingFraction: 0.76), value: capsuleOpens)
-
             BadgeArtwork(achievement: achievement)
                 .frame(width: capsuleSize * 0.96, height: capsuleSize * 0.96)
                 .clipShape(Circle())
@@ -165,8 +155,6 @@ struct GachaponUnlockView: View {
         machineShake = false
         knobTurns = false
         capsuleDrops = false
-        capsuleBounces = false
-        capsuleOpens = false
         badgeAppears = false
         textAppears = false
         canCollect = false
@@ -181,18 +169,12 @@ struct GachaponUnlockView: View {
             capsuleDrops = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-            capsuleBounces = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.25) {
-            capsuleOpens = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
             badgeAppears = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.35) {
             textAppears = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 7.1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.1) {
             canCollect = true
         }
     }
@@ -225,44 +207,5 @@ private struct KnobTurnOverlay: View {
         }
         .position(x: size.width * 0.5, y: size.height * 0.615)
         .allowsHitTesting(false)
-    }
-}
-
-private struct UnlockCapsuleView: View {
-    var isOpen: Bool
-
-    var body: some View {
-        ZStack {
-            CapsuleHalf(fill: Color(red: 1.0, green: 0.31, blue: 0.58), isTop: true)
-                .offset(x: isOpen ? -34 : 0, y: isOpen ? -17 : 0)
-                .rotationEffect(.degrees(isOpen ? -20 : 0))
-
-            CapsuleHalf(fill: Color(red: 1.0, green: 0.86, blue: 0.37), isTop: false)
-                .offset(x: isOpen ? 34 : 0, y: isOpen ? 17 : 0)
-                .rotationEffect(.degrees(isOpen ? 20 : 0))
-
-            Capsule()
-                .stroke(Color.white.opacity(isOpen ? 0 : 0.55), lineWidth: 2)
-        }
-        .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
-    }
-}
-
-private struct CapsuleHalf: View {
-    var fill: Color
-    var isTop: Bool
-
-    var body: some View {
-        GeometryReader { proxy in
-            let halfHeight = proxy.size.height * 0.52
-            RoundedRectangle(cornerRadius: proxy.size.width * 0.28)
-                .fill(fill.gradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: proxy.size.width * 0.28)
-                        .stroke(Color.white.opacity(0.42), lineWidth: 2)
-                )
-                .frame(height: halfHeight)
-                .frame(maxHeight: .infinity, alignment: isTop ? .top : .bottom)
-        }
     }
 }

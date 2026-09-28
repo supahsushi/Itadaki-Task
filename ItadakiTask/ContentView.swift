@@ -102,57 +102,70 @@ extension TaskRecurrence: Codable {
 }
 
 enum TaskCategory: String, CaseIterable, Codable, Identifiable {
-    case health = "Health"
-    case exercise = "Exercise"
-    case sports = "Sports"
-    case wellness = "Wellness"
-    case work = "Work"
-    case learning = "Learning"
-    case home = "Home"
-    case social = "Social"
-    case relationships = "Relationships"
-    case money = "Money"
-    case creative = "Creative"
-    case errands = "Errands"
-    case selfCare = "Self-care"
-    case other = "Other"
+    case fitness
+    case healthyEating
+    case productivity
+    case learning
+    case selfCare
+    case social
+    case other
 
     var id: String { rawValue }
 
+    /// Reads a saved category, including the 14 categories used before the
+    /// achievement rework, so older tasks and completion counts keep counting.
+    init(storedValue: String) {
+        if let category = TaskCategory(rawValue: storedValue) {
+            self = category
+            return
+        }
+        switch storedValue {
+        case "Exercise", "Sports": self = .fitness
+        case "Health": self = .healthyEating
+        case "Work", "Home", "Money", "Errands": self = .productivity
+        case "Learning": self = .learning
+        case "Wellness", "Self-care": self = .selfCare
+        case "Social", "Relationships": self = .social
+        default: self = .other
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        self.init(storedValue: try decoder.singleValueContainer().decode(String.self))
+    }
+
+    var displayName: String {
+        switch self {
+        case .fitness: "Fitness"
+        case .healthyEating: "Healthy Eating"
+        case .productivity: "Productivity"
+        case .learning: "Learning"
+        case .selfCare: "Self-Care"
+        case .social: "Social"
+        case .other: "Other"
+        }
+    }
+
     var icon: String {
         switch self {
-        case .health: "drop.fill"
-        case .exercise: "figure.run"
-        case .sports: "tennisball.fill"
-        case .wellness: "brain.head.profile"
-        case .work: "laptopcomputer"
+        case .fitness: "figure.run"
+        case .healthyEating: "carrot.fill"
+        case .productivity: "laptopcomputer"
         case .learning: "book.fill"
-        case .home: "house.fill"
+        case .selfCare: "leaf.fill"
         case .social: "bubble.left.and.bubble.right.fill"
-        case .relationships: "heart.fill"
-        case .money: "dollarsign.circle.fill"
-        case .creative: "paintpalette.fill"
-        case .errands: "cart.fill"
-        case .selfCare: "bed.double.fill"
         case .other: "star.fill"
         }
     }
 
     var color: Color {
         switch self {
-        case .health: .cyan
-        case .exercise: .blue
-        case .sports: .green
-        case .wellness: .purple
-        case .work: .indigo
+        case .fitness: .blue
+        case .healthyEating: .green
+        case .productivity: .indigo
         case .learning: .orange
-        case .home: .pink
-        case .social: .mint
-        case .relationships: .red
-        case .money: .yellow
-        case .creative: .orange
-        case .errands: .purple
-        case .selfCare: .blue
+        case .selfCare: .purple
+        case .social: .pink
         case .other: .yellow
         }
     }
@@ -863,7 +876,12 @@ struct ContentView: View {
               let decoded = try? JSONDecoder().decode([String: Int].self, from: data) else {
             return [:]
         }
-        return decoded
+        // Folds counts saved under the old category names into the current categories.
+        var normalized: [String: Int] = [:]
+        for (storedCategory, count) in decoded {
+            normalized[TaskCategory(storedValue: storedCategory).rawValue, default: 0] += count
+        }
+        return normalized
     }
 
     private func decodedAchievementStates() -> [AchievementState] {
@@ -1551,6 +1569,7 @@ struct AddTaskSheet: View {
     @State private var title = ""
     @State private var dueDate: Date
     @State private var repeatOption: AddTaskRepeatOption = .none
+    @State private var category: TaskCategory = .other
     @State private var showingDatePicker = false
     @State private var showingTimePicker = false
 
@@ -1666,6 +1685,8 @@ struct AddTaskSheet: View {
                     repeatButton(option: option, artworkFrame: artworkFrame)
                 }
 
+                categoryMenu(artworkFrame: artworkFrame)
+
                 Button {
                     submitTask()
                 } label: {
@@ -1720,13 +1741,49 @@ struct AddTaskSheet: View {
         addTask(
             SushiTask(
                 title: String(trimmedTitle.prefix(60)),
-                category: .other,
+                category: category,
                 dueDate: dueDate,
                 recurrence: repeatOption.recurrence,
                 hasReminder: true
             )
         )
         dismiss()
+    }
+
+    /// Sits in the empty space to the right of the painted "Repeat (Optional)" heading.
+    private func categoryMenu(artworkFrame: CGRect) -> some View {
+        Menu {
+            Picker("Category", selection: $category) {
+                ForEach(TaskCategory.allCases) { option in
+                    Label(option.displayName, systemImage: option.icon)
+                        .tag(option)
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: category.icon)
+                    .font(.system(size: max(11, artworkFrame.width * 0.016), weight: .black))
+                    .foregroundStyle(category.color)
+                Text(category == .other ? "Category" : category.displayName)
+                    .font(.system(size: max(12, artworkFrame.width * 0.017), weight: .black, design: .rounded))
+                    .foregroundStyle(Color(red: 0.08, green: 0.13, blue: 0.26))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: max(9, artworkFrame.width * 0.012), weight: .black))
+                    .foregroundStyle(Color(red: 0.45, green: 0.35, blue: 0.28))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: artworkFrame.height * 0.028)
+            .background(Color.white.opacity(0.92), in: Capsule())
+            .overlay(Capsule().stroke(Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 1))
+        }
+        .accessibilityLabel("Category, \(category.displayName)")
+        .frame(width: artworkFrame.width * 0.40, alignment: .trailing)
+        .position(
+            x: artworkFrame.minX + artworkFrame.width * 0.72,
+            y: artworkFrame.minY + artworkFrame.height * 0.615
+        )
     }
 
     private func menuHitZone(
@@ -2135,7 +2192,7 @@ struct CategoryTile: View {
             VStack(spacing: compact ? 2 : 3) {
                 Image(systemName: option.icon)
                     .font(.system(size: compact ? 15 : 17, weight: .black))
-                Text(option.rawValue)
+                Text(option.displayName)
                     .font(.system(size: compact ? 8.7 : 9.5, weight: .black, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
@@ -2158,10 +2215,10 @@ struct SushiNigiriView: View {
 
     var toppingColor: Color {
         switch category {
-        case .health, .exercise, .sports: Color(red: 0.97, green: 0.33, blue: 0.20)
-        case .wellness, .work, .learning: Color(red: 0.98, green: 0.77, blue: 0.20)
-        case .home, .social, .relationships: Color(red: 0.92, green: 0.12, blue: 0.40)
-        case .money, .creative, .errands, .selfCare, .other: Color(red: 0.08, green: 0.08, blue: 0.09)
+        case .fitness, .healthyEating: Color(red: 0.97, green: 0.33, blue: 0.20)
+        case .productivity, .learning: Color(red: 0.98, green: 0.77, blue: 0.20)
+        case .social: Color(red: 0.92, green: 0.12, blue: 0.40)
+        case .selfCare, .other: Color(red: 0.08, green: 0.08, blue: 0.09)
         }
     }
 
