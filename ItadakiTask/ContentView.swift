@@ -364,7 +364,7 @@ struct HomeArtworkLayout {
 
     /// "Customer is full" art: empty name and sushi-count panels, like the Add Task art.
     static let dayThank = thankLayout(artworkSize: CGSize(width: 851, height: 1848), meterFill: dayMeter)
-    static let nightThank = thankLayout(artworkSize: CGSize(width: 851, height: 1847), meterFill: nightMeter)
+    static let nightThank = thankLayout(artworkSize: CGSize(width: 851, height: 1848), meterFill: nightMeter)
 
     private static func thankLayout(artworkSize: CGSize, meterFill: [Color]) -> HomeArtworkLayout {
         HomeArtworkLayout(
