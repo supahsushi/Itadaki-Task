@@ -1,4 +1,3 @@
-import HealthKit
 import SwiftUI
 import UserNotifications
 
@@ -426,7 +425,6 @@ struct ContentView: View {
     @AppStorage("sushiCollectedAchievementUnlocks") private var sushiCollectedAchievementUnlocks = ""
     @AppStorage("sushiCollectionStates") private var sushiCollectionStates = ""
     @AppStorage("sushiPendingCustomerArrivals") private var sushiPendingCustomerArrivals = ""
-    @AppStorage("sushiAskedHealthKit") private var hasAskedHealthKit = false
     @AppStorage("sushiRepairedSkippedWelcomes") private var hasRepairedSkippedWelcomes = false
     /// Achievements whose customer is being welcomed again, so First Visited uses the welcome day.
     @AppStorage("sushiReplayWelcomeAchievementIDs") private var sushiReplayWelcomeAchievementIDs = ""
@@ -541,7 +539,6 @@ struct ContentView: View {
             migrateCollectionUnlocksIfNeeded()
             presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
-            requestHealthKitAuthorizationIfNeeded()
             Task {
                 await PremiumStore.shared.start()
                 syncRemindersWithPremium()
@@ -1183,12 +1180,6 @@ struct ContentView: View {
         let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
         return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
     }
-
-    private func requestHealthKitAuthorizationIfNeeded() {
-        guard !hasAskedHealthKit else { return }
-        hasAskedHealthKit = true
-        SushiHealthKitStore.shared.requestAuthorizationIfAvailable()
-    }
 }
 
 final class LocalNotificationScheduler: @unchecked Sendable {
@@ -1305,34 +1296,6 @@ final class LocalNotificationScheduler: @unchecked Sendable {
 
     private func reminderIdentifier(for task: SushiTask, suffix: String) -> String {
         "itadakitask.reminder.\(task.id.uuidString).\(suffix)"
-    }
-}
-
-final class SushiHealthKitStore: @unchecked Sendable {
-    static let shared = SushiHealthKitStore()
-
-    private let healthStore = HKHealthStore()
-
-    private init() {}
-
-    func requestAuthorizationIfAvailable() {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
-
-        let readTypes: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .stepCount),
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
-            HKObjectType.workoutType()
-        ].compactMap { $0 }.reduce(into: Set<HKObjectType>()) { result, type in
-            result.insert(type)
-        }
-
-        healthStore.requestAuthorization(toShare: [], read: readTypes) { success, error in
-            if let error {
-                print("HealthKit authorization failed: \(error.localizedDescription)")
-            } else if !success {
-                print("HealthKit authorization was not granted.")
-            }
-        }
     }
 }
 
