@@ -196,15 +196,6 @@ enum Daypart {
         }
     }
 
-    var chefArtworkSize: CGSize {
-        switch self {
-        case .morning, .noon:
-            CGSize(width: 853, height: 1844)
-        case .night:
-            CGSize(width: 851, height: 1847)
-        }
-    }
-
     var thankAsset: String {
         switch self {
         case .morning, .noon:
@@ -214,8 +205,132 @@ enum Daypart {
         }
     }
 
-    var thankArtworkSize: CGSize {
-        CGSize(width: 851, height: 1848)
+    func homeLayout(mealIsFull: Bool) -> HomeArtworkLayout {
+        switch (self, mealIsFull) {
+        case (.morning, false), (.noon, false): .dayChef
+        case (.night, false): .nightChef
+        case (.morning, true), (.noon, true): .dayThank
+        case (.night, true): .nightThank
+        }
+    }
+}
+
+/// Where things sit in each home background, in the artwork's own pixels.
+/// The artwork paints placeholder text ("Jen", "Lv. 0", "0 / 10") into its panels,
+/// so each live value is drawn over a patch tinted to match the panel.
+struct HomeArtworkLayout {
+    struct Patch {
+        var rect: CGRect
+        var top: Color
+        var bottom: Color
+    }
+
+    var artworkSize: CGSize
+
+    var profilePatch: Patch
+    var nameLeadingX: CGFloat
+    var nameCenterY: CGFloat
+    var nameFontSize: CGFloat
+    var levelCenterY: CGFloat
+    var levelFontSize: CGFloat
+    var meterRect: CGRect
+    var meterFill: [Color]
+
+    var countPatch: Patch
+    var countCenter: CGPoint
+    var countFontSize: CGFloat
+    var labelPatch: Patch
+    var labelCenter: CGPoint
+    var labelFontSize: CGFloat
+    var labelText: String
+
+    /// The painted task rows on the orders board (unused on the "customer is full" art).
+    var firstRowTop: CGFloat = 0
+    var rowPitch: CGFloat = 0
+    var rowHeight: CGFloat = 0
+    var rowMinX: CGFloat = 0
+    var rowMaxX: CGFloat = 0
+    var paintedRowCount: CGFloat = 5
+    /// The painted "+ Add a Task" button.
+    var addTaskButton: CGRect = .zero
+
+    private static let dayMeter = [Color.white, Color(red: 1.0, green: 0.78, blue: 0.86)]
+    private static let nightMeter = [Color(red: 1.0, green: 0.86, blue: 0.48), Color(red: 0.96, green: 0.68, blue: 0.28)]
+
+    private static func brown(_ r: Double, _ g: Double, _ b: Double) -> Color {
+        Color(red: r, green: g, blue: b)
+    }
+
+    static let dayChef = HomeArtworkLayout(
+        artworkSize: CGSize(width: 853, height: 1844),
+        profilePatch: Patch(rect: CGRect(x: 114, y: 86, width: 98, height: 74), top: brown(0.253, 0.111, 0.060), bottom: brown(0.298, 0.128, 0.064)),
+        nameLeadingX: 120, nameCenterY: 104, nameFontSize: 24,
+        levelCenterY: 129, levelFontSize: 21,
+        meterRect: CGRect(x: 119, y: 142, width: 86, height: 11),
+        meterFill: dayMeter,
+        countPatch: Patch(rect: CGRect(x: 715, y: 94, width: 113, height: 37), top: brown(0.300, 0.124, 0.054), bottom: brown(0.295, 0.120, 0.057)),
+        countCenter: CGPoint(x: 766, y: 113), countFontSize: 42,
+        labelPatch: Patch(rect: CGRect(x: 652, y: 133, width: 180, height: 29), top: brown(0.317, 0.139, 0.071), bottom: brown(0.313, 0.129, 0.054)),
+        labelCenter: CGPoint(x: 740, y: 147), labelFontSize: 23, labelText: "sushi eaten today",
+        firstRowTop: 914, rowPitch: 80.75, rowHeight: 74, rowMinX: 63, rowMaxX: 677,
+        addTaskButton: CGRect(x: 524, y: 850, width: 210, height: 62)
+    )
+
+    static let nightChef = HomeArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1847),
+        profilePatch: Patch(rect: CGRect(x: 122, y: 112, width: 110, height: 78), top: brown(0.381, 0.136, 0.063), bottom: brown(0.378, 0.158, 0.103)),
+        nameLeadingX: 127, nameCenterY: 131, nameFontSize: 26,
+        levelCenterY: 155, levelFontSize: 22,
+        meterRect: CGRect(x: 127, y: 171, width: 98, height: 13),
+        meterFill: nightMeter,
+        countPatch: Patch(rect: CGRect(x: 712, y: 112, width: 112, height: 45), top: brown(0.317, 0.102, 0.045), bottom: brown(0.274, 0.085, 0.040)),
+        countCenter: CGPoint(x: 766, y: 135), countFontSize: 44,
+        labelPatch: Patch(rect: CGRect(x: 646, y: 157, width: 178, height: 33), top: brown(0.284, 0.095, 0.050), bottom: brown(0.248, 0.077, 0.035)),
+        labelCenter: CGPoint(x: 731, y: 171), labelFontSize: 25, labelText: "Sushi Eaten Today",
+        firstRowTop: 860, rowPitch: 69.5, rowHeight: 66, rowMinX: 31, rowMaxX: 692,
+        addTaskButton: CGRect(x: 517, y: 801, width: 176, height: 42)
+    )
+
+    static let dayThank = HomeArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        profilePatch: Patch(rect: CGRect(x: 118, y: 96, width: 107, height: 72), top: brown(0.304, 0.111, 0.040), bottom: brown(0.289, 0.113, 0.056)),
+        nameLeadingX: 123, nameCenterY: 115, nameFontSize: 25,
+        levelCenterY: 139, levelFontSize: 21,
+        meterRect: CGRect(x: 122, y: 151, width: 90, height: 11),
+        meterFill: dayMeter,
+        countPatch: Patch(rect: CGRect(x: 712, y: 104, width: 116, height: 37), top: brown(0.298, 0.110, 0.044), bottom: brown(0.258, 0.092, 0.038)),
+        countCenter: CGPoint(x: 762, y: 123), countFontSize: 42,
+        labelPatch: Patch(rect: CGRect(x: 655, y: 142, width: 177, height: 26), top: brown(0.270, 0.093, 0.028), bottom: brown(0.223, 0.077, 0.026)),
+        labelCenter: CGPoint(x: 736, y: 155), labelFontSize: 24, labelText: "sushi eaten today"
+    )
+
+    static let nightThank = HomeArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        profilePatch: Patch(rect: CGRect(x: 118, y: 97, width: 98, height: 75), top: brown(0.264, 0.112, 0.040), bottom: brown(0.163, 0.070, 0.031)),
+        nameLeadingX: 123, nameCenterY: 116, nameFontSize: 26,
+        levelCenterY: 140, levelFontSize: 22,
+        meterRect: CGRect(x: 122, y: 154, width: 82, height: 10),
+        meterFill: dayMeter,
+        countPatch: Patch(rect: CGRect(x: 712, y: 104, width: 114, height: 38), top: brown(0.201, 0.086, 0.038), bottom: brown(0.167, 0.076, 0.036)),
+        countCenter: CGPoint(x: 762, y: 124), countFontSize: 42,
+        labelPatch: Patch(rect: CGRect(x: 655, y: 143, width: 175, height: 27), top: brown(0.166, 0.074, 0.035), bottom: brown(0.144, 0.064, 0.033)),
+        labelCenter: CGPoint(x: 736, y: 156), labelFontSize: 24, labelText: "sushi eaten today"
+    )
+}
+
+/// Converts artwork pixels into screen points for one fitted artwork frame.
+struct ArtworkMapper {
+    var frame: CGRect
+    var artworkSize: CGSize
+
+    var scale: CGFloat { frame.width / artworkSize.width }
+
+    func point(_ p: CGPoint) -> CGPoint {
+        CGPoint(x: frame.minX + p.x * scale, y: frame.minY + p.y * scale)
+    }
+
+    func rect(_ r: CGRect) -> CGRect {
+        CGRect(x: frame.minX + r.minX * scale, y: frame.minY + r.minY * scale, width: r.width * scale, height: r.height * scale)
     }
 }
 
@@ -254,30 +369,36 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { proxy in
             let backgroundAsset = mealIsFull ? daypart.thankAsset : daypart.chefAsset
-            let backgroundArtworkSize = mealIsFull ? daypart.thankArtworkSize : daypart.chefArtworkSize
+            let layout = daypart.homeLayout(mealIsFull: mealIsFull)
+            let backgroundArtworkSize = layout.artworkSize
             let artworkFrame = fittedArtworkFrame(
                 container: proxy.size,
                 artwork: backgroundArtworkSize
             )
-            let rowArea = CGRect(
-                x: artworkFrame.minX + artworkFrame.width * 0.075,
-                y: artworkFrame.minY + artworkFrame.height * 0.462,
-                width: artworkFrame.width * 0.715,
-                height: artworkFrame.height * 0.214
-            )
+            let mapper = ArtworkMapper(frame: artworkFrame, artworkSize: layout.artworkSize)
+            let rowArea = mapper.rect(CGRect(
+                x: layout.rowMinX,
+                y: layout.firstRowTop,
+                width: layout.rowMaxX - layout.rowMinX,
+                height: layout.rowPitch * (layout.paintedRowCount - 1) + layout.rowHeight
+            ))
+            let addTaskButton = mapper.rect(layout.addTaskButton)
 
             ZStack {
                 ArtworkBackground(name: backgroundAsset, artworkSize: backgroundArtworkSize)
 
                 ProfileStreakLevelOverlay(
+                    name: displayName,
                     levelInfo: streakLevelInfo,
-                    artworkFrame: artworkFrame
+                    layout: layout,
+                    mapper: mapper
                 )
 
                 MealCountOverlay(
                     eatenCount: sushiEatenToday,
                     maxCount: mealLimit,
-                    artworkFrame: artworkFrame
+                    layout: layout,
+                    mapper: mapper
                 )
 
                 OrderMenuHitZones(
@@ -301,17 +422,16 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add a Task")
-                    .frame(width: artworkFrame.width * 0.19, height: artworkFrame.height * 0.036)
-                    .position(
-                        x: artworkFrame.minX + artworkFrame.width * 0.711,
-                        y: artworkFrame.minY + artworkFrame.height * 0.423
-                    )
+                    .frame(width: addTaskButton.width, height: addTaskButton.height)
+                    .position(x: addTaskButton.midX, y: addTaskButton.midY)
 
                     TaskBoardView(
                         tasks: activeTasks,
                         daypart: daypart,
                         mealIsFull: mealIsFull,
-                        recentlyEatenTaskIDs: recentlyEatenTaskIDs
+                        recentlyEatenTaskIDs: recentlyEatenTaskIDs,
+                        rowHeight: layout.rowHeight * mapper.scale,
+                        rowSpacing: (layout.rowPitch - layout.rowHeight) * mapper.scale
                     ) { task in
                         complete(task)
                     }
@@ -1013,44 +1133,66 @@ struct StreakLevelInfo {
 }
 
 struct ProfileStreakLevelOverlay: View {
+    var name: String
     var levelInfo: StreakLevelInfo
-    var artworkFrame: CGRect
+    var layout: HomeArtworkLayout
+    var mapper: ArtworkMapper
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: artworkFrame.width * 0.010)
-                .fill(Color(red: 0.25, green: 0.13, blue: 0.07).opacity(0.92))
-                .frame(width: artworkFrame.width * 0.105, height: artworkFrame.height * 0.020)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.180,
-                    y: artworkFrame.minY + artworkFrame.height * 0.079
-                )
+        let patch = mapper.rect(layout.profilePatch.rect)
+        let meter = mapper.rect(layout.meterRect)
+        let leadingX = mapper.point(CGPoint(x: layout.nameLeadingX, y: 0)).x
+        let textWidth = patch.maxX - leadingX - 4 * mapper.scale
+
+        ZStack(alignment: .topLeading) {
+            ArtworkPatch(patch: layout.profilePatch, mapper: mapper)
+
+            Text(name)
+                .font(.system(size: layout.nameFontSize * mapper.scale, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(width: textWidth, alignment: .leading)
+                .position(x: leadingX + textWidth / 2, y: mapper.point(CGPoint(x: 0, y: layout.nameCenterY)).y)
 
             Text("Lv. \(levelInfo.level)")
-                .font(.system(size: max(10, artworkFrame.width * 0.017), weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.65), radius: 2, y: 1)
+                .font(.system(size: layout.levelFontSize * mapper.scale, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.95))
+                .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
                 .lineLimit(1)
-                .minimumScaleFactor(0.78)
-                .frame(width: artworkFrame.width * 0.10, alignment: .leading)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.180,
-                    y: artworkFrame.minY + artworkFrame.height * 0.079
-                )
+                .minimumScaleFactor(0.7)
+                .frame(width: textWidth, alignment: .leading)
+                .position(x: leadingX + textWidth / 2, y: mapper.point(CGPoint(x: 0, y: layout.levelCenterY)).y)
 
-            ProfileLevelMeter(progress: levelInfo.progress)
-                .frame(width: artworkFrame.width * 0.105, height: artworkFrame.height * 0.009)
-                .position(
-                    x: artworkFrame.minX + artworkFrame.width * 0.210,
-                    y: artworkFrame.minY + artworkFrame.height * 0.101
-                )
+            ProfileLevelMeter(progress: levelInfo.progress, fill: layout.meterFill)
+                .frame(width: meter.width, height: meter.height)
+                .position(x: meter.midX, y: meter.midY)
         }
         .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name), level \(levelInfo.level)")
+    }
+}
+
+/// Covers placeholder text painted into the artwork with the panel's own colors.
+struct ArtworkPatch: View {
+    var patch: HomeArtworkLayout.Patch
+    var mapper: ArtworkMapper
+
+    var body: some View {
+        let rect = mapper.rect(patch.rect)
+        RoundedRectangle(cornerRadius: 4 * mapper.scale)
+            .fill(LinearGradient(colors: [patch.top, patch.bottom], startPoint: .top, endPoint: .bottom))
+            .frame(width: rect.width, height: rect.height)
+            .blur(radius: 1.2 * mapper.scale)
+            .position(x: rect.midX, y: rect.midY)
     }
 }
 
 struct ProfileLevelMeter: View {
     var progress: Double
+    var fill: [Color]
 
     var body: some View {
         GeometryReader { proxy in
@@ -1058,9 +1200,10 @@ struct ProfileLevelMeter: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color(red: 0.65, green: 1.0, blue: 0.45))
+                    .fill(Color.white.opacity(0.22))
+                Capsule()
+                    .fill(LinearGradient(colors: fill, startPoint: .leading, endPoint: .trailing))
                     .frame(width: fillWidth)
-                    .shadow(color: Color(red: 0.65, green: 1.0, blue: 0.45).opacity(0.72), radius: 2)
             }
         }
         .clipShape(Capsule())
@@ -1084,36 +1227,39 @@ struct MealCountText: View {
 struct MealCountOverlay: View {
     var eatenCount: Int
     var maxCount: Int
-    var artworkFrame: CGRect
+    var layout: HomeArtworkLayout
+    var mapper: ArtworkMapper
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: artworkFrame.width * 0.018)
-                .fill(Color(red: 0.25, green: 0.12, blue: 0.07).opacity(0.94))
-                .frame(width: artworkFrame.width * 0.205, height: artworkFrame.height * 0.058)
+        let count = mapper.point(layout.countCenter)
+        let label = mapper.point(layout.labelCenter)
+        let countPatch = mapper.rect(layout.countPatch.rect)
+        let labelPatch = mapper.rect(layout.labelPatch.rect)
 
-            VStack(spacing: 1) {
-                Text("\(eatenCount) / \(maxCount)")
-                    .font(.system(size: max(18, artworkFrame.width * 0.033), weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.70), radius: 2, y: 1)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+        ZStack(alignment: .topLeading) {
+            ArtworkPatch(patch: layout.countPatch, mapper: mapper)
+            ArtworkPatch(patch: layout.labelPatch, mapper: mapper)
 
-                Text("sushi eaten today")
-                    .font(.system(size: max(8, artworkFrame.width * 0.013), weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.86))
-                    .shadow(color: .black.opacity(0.60), radius: 1, y: 1)
-                    .lineLimit(1)
-            }
-            .multilineTextAlignment(.center)
-            .frame(width: artworkFrame.width * 0.185)
+            Text("\(eatenCount) / \(maxCount)")
+                .font(.system(size: layout.countFontSize * mapper.scale, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: countPatch.width)
+                .position(count)
+
+            Text(layout.labelText)
+                .font(.system(size: layout.labelFontSize * mapper.scale, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.95))
+                .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: labelPatch.width)
+                .position(label)
         }
-        .position(
-            x: artworkFrame.minX + artworkFrame.width * 0.835,
-            y: artworkFrame.minY + artworkFrame.height * 0.075
-        )
         .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(eatenCount) of \(maxCount) sushi eaten today")
     }
 }
@@ -1234,35 +1380,34 @@ struct TaskBoardView: View {
     var daypart: Daypart
     var mealIsFull: Bool
     var recentlyEatenTaskIDs: Set<SushiTask.ID>
+    /// Matches the painted rows on the orders board.
+    var rowHeight: CGFloat
+    var rowSpacing: CGFloat
     var complete: (SushiTask) -> Void
 
     var body: some View {
-        let boardHeaderClearance: CGFloat = mealIsFull ? 0 : 34
-
         VStack(spacing: 5) {
             if mealIsFull {
                 CustomerFullCard(daypart: daypart)
             }
 
             ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 3) {
+                LazyVStack(spacing: rowSpacing) {
                     ForEach(tasks) { task in
                         TaskRow(
                             task: task,
                             daypart: daypart,
                             mealIsFull: mealIsFull,
-                            isEating: recentlyEatenTaskIDs.contains(task.id)
+                            isEating: recentlyEatenTaskIDs.contains(task.id),
+                            rowHeight: rowHeight
                         ) {
                             complete(task)
                         }
                     }
                 }
-                .padding(.top, boardHeaderClearance)
-                .padding(.bottom, 1)
             }
             .frame(maxHeight: .infinity)
         }
-        .padding(.vertical, 2)
         .frame(maxHeight: .infinity, alignment: .top)
     }
 }
@@ -1272,6 +1417,7 @@ struct TaskRow: View {
     var daypart: Daypart
     var mealIsFull: Bool
     var isEating: Bool
+    var rowHeight: CGFloat
     var complete: () -> Void
 
     var body: some View {
@@ -1303,10 +1449,10 @@ struct TaskRow: View {
             )
             .accessibilityLabel(task.isEaten ? "\(task.title) completed" : "Complete \(task.title)")
         }
-        .padding(.horizontal, 8)
-        .frame(height: 38)
+        .padding(.horizontal, 10)
+        .frame(height: rowHeight)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: rowHeight * 0.22)
                 .fill(Color.white.opacity(0.62))
         )
     }
