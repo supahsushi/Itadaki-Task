@@ -151,9 +151,13 @@ struct CollectionCharacterProfileView: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        profileHero(width: proxy.size.width, safeTop: proxy.safeAreaInsets.top)
-                        profileDetails
+                    if UIImage(named: character.profilePageAssetName) != nil {
+                        profilePageArtwork(width: proxy.size.width)
+                    } else {
+                        VStack(spacing: 0) {
+                            profileHero(width: proxy.size.width, safeTop: proxy.safeAreaInsets.top)
+                            profileDetails
+                        }
                     }
                 }
                 .ignoresSafeArea()
@@ -175,6 +179,26 @@ struct CollectionCharacterProfileView: View {
             }
         }
         .preferredColorScheme(.light)
+    }
+
+    private func profilePageArtwork(width: CGFloat) -> some View {
+        let imageHeight = width * 1850 / 850
+
+        return ZStack(alignment: .topLeading) {
+            Image(character.profilePageAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: width)
+
+            Text(firstVisitedText)
+                .font(.system(size: max(15, width * 0.045), weight: .bold, design: .rounded))
+                .foregroundStyle(Color(red: 0.35, green: 0.17, blue: 0.08))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .position(x: width * 0.32, y: imageHeight * 0.888)
+                .accessibilityLabel("First Visited \(firstVisitedText)")
+        }
+        .frame(width: width, height: imageHeight)
     }
 
     private func profileHero(width: CGFloat, safeTop: CGFloat) -> some View {

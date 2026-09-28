@@ -208,6 +208,7 @@ struct CollectionCharacter: Identifiable, Equatable {
     var loves: String { definition.loves }
     var funFact: String { definition.funFact }
     var artworkAssetName: String { definition.artworkAssetName }
+    var profilePageAssetName: String { "\(definition.artworkAssetName)ProfilePage" }
     var introduction: String { definition.introduction }
     var dateFirstMet: Date? { state.dateFirstMet }
     var isUnlocked: Bool { state.isUnlocked }
