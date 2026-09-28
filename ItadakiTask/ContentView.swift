@@ -447,10 +447,14 @@ struct ContentView: View {
                         mealIsFull: mealIsFull,
                         recentlyEatenTaskIDs: recentlyEatenTaskIDs,
                         rowHeight: layout.rowHeight * mapper.scale,
-                        rowSpacing: (layout.rowPitch - layout.rowHeight) * mapper.scale
-                    ) { task in
-                        complete(task)
-                    }
+                        rowSpacing: (layout.rowPitch - layout.rowHeight) * mapper.scale,
+                        complete: { task in
+                            complete(task)
+                        },
+                        delete: { task in
+                            delete(task)
+                        }
+                    )
                     .frame(width: rowArea.width, height: rowArea.height)
                     .position(x: rowArea.midX, y: rowArea.midY)
                 }
@@ -607,6 +611,16 @@ struct ContentView: View {
             width: width,
             height: height
         )
+    }
+
+    /// Removes a task (and, for a repeating task, all of its future repeats).
+    /// Completion history and achievement progress are unaffected.
+    private func delete(_ task: SushiTask) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            tasks.removeAll { $0.id == task.id }
+        }
+        saveTasks()
+        LocalNotificationScheduler.shared.cancelReminder(for: task)
     }
 
     private func complete(_ task: SushiTask) {
@@ -1428,6 +1442,7 @@ struct TaskBoardView: View {
     var rowHeight: CGFloat
     var rowSpacing: CGFloat
     var complete: (SushiTask) -> Void
+    var delete: (SushiTask) -> Void
 
     var body: some View {
         VStack(spacing: 5) {
@@ -1438,21 +1453,76 @@ struct TaskBoardView: View {
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: rowSpacing) {
                     ForEach(tasks) { task in
-                        TaskRow(
-                            task: task,
-                            daypart: daypart,
-                            mealIsFull: mealIsFull,
-                            isEating: recentlyEatenTaskIDs.contains(task.id),
-                            rowHeight: rowHeight
-                        ) {
-                            complete(task)
+                        SwipeToDeleteRow(rowHeight: rowHeight) {
+                            delete(task)
+                        } content: {
+                            TaskRow(
+                                task: task,
+                                daypart: daypart,
+                                mealIsFull: mealIsFull,
+                                isEating: recentlyEatenTaskIDs.contains(task.id),
+                                rowHeight: rowHeight
+                            ) {
+                                complete(task)
+                            }
                         }
+                        .transition(.asymmetric(insertion: .identity, removal: .move(edge: .leading).combined(with: .opacity)))
                     }
                 }
             }
             .frame(maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// Swipe a row left to reveal a trash button; tap it to delete.
+/// The task board is a ScrollView rather than a List, so it can't use `.swipeActions`.
+struct SwipeToDeleteRow<Content: View>: View {
+    var rowHeight: CGFloat
+    var onDelete: () -> Void
+    @ViewBuilder var content: Content
+
+    @State private var offset: CGFloat = 0
+    @State private var isOpen = false
+
+    private var revealWidth: CGFloat { rowHeight * 1.6 }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(action: onDelete) {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: rowHeight * 0.45, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: revealWidth - 6, height: rowHeight)
+                    .background(
+                        RoundedRectangle(cornerRadius: rowHeight * 0.22)
+                            .fill(Color(red: 0.90, green: 0.20, blue: 0.28).gradient)
+                    )
+            }
+            .buttonStyle(.plain)
+            .opacity(offset < 0 ? 1 : 0)
+            .accessibilityHidden(true)
+
+            content
+                .offset(x: offset)
+                // Simultaneous so vertical scrolling of the board keeps working.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 18)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            let start = isOpen ? -revealWidth : 0
+                            offset = min(0, max(-revealWidth * 1.3, start + value.translation.width))
+                        }
+                        .onEnded { _ in
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                isOpen = offset < -revealWidth / 2
+                                offset = isOpen ? -revealWidth : 0
+                            }
+                        }
+                )
+        }
+        .accessibilityAction(named: "Delete") { onDelete() }
     }
 }
 
