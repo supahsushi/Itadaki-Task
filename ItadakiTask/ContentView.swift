@@ -242,6 +242,7 @@ struct ContentView: View {
     @State private var showingAddTask = false
     @State private var showingAchievements = false
     @State private var showingCollection = false
+    @State private var menuDestinationAfterAddTask: AddTaskMenuDestination?
     @State private var showingNamePrompt = false
     @State private var draftName = ""
     @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
@@ -332,14 +333,21 @@ struct ContentView: View {
             presentNextPendingAchievementUnlockIfNeeded()
             requestHealthKitAuthorizationIfNeeded()
         }
-        .fullScreenCover(isPresented: $showingAddTask) {
-            AddTaskSheet(daypart: daypart) { task in
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
-                    tasks.append(task)
-                    saveTasks()
+        .fullScreenCover(isPresented: $showingAddTask, onDismiss: openMenuDestinationAfterAddTask) {
+            AddTaskSheet(
+                daypart: daypart,
+                addTask: { task in
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
+                        tasks.append(task)
+                        saveTasks()
+                    }
+                    LocalNotificationScheduler.shared.scheduleReminder(for: task)
+                },
+                openMenuDestination: { destination in
+                    menuDestinationAfterAddTask = destination
+                    showingAddTask = false
                 }
-                LocalNotificationScheduler.shared.scheduleReminder(for: task)
-            }
+            )
         }
         .fullScreenCover(isPresented: $showingAchievements) {
             AchievementsScreen(
@@ -381,6 +389,19 @@ struct ContentView: View {
             guard !isPresented else { return }
             presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
+        }
+    }
+
+    /// Add Task covers the home screen, so a bottom-menu tap there closes it first
+    /// and opens the destination once the dismissal finishes.
+    private func openMenuDestinationAfterAddTask() {
+        guard let destination = menuDestinationAfterAddTask else { return }
+        menuDestinationAfterAddTask = nil
+        switch destination {
+        case .collection:
+            showingCollection = true
+        case .achievements:
+            showingAchievements = true
         }
     }
 
@@ -1344,9 +1365,15 @@ struct EatenSparkles: View {
     }
 }
 
+enum AddTaskMenuDestination {
+    case collection
+    case achievements
+}
+
 struct AddTaskSheet: View {
     var daypart: Daypart
     var addTask: (SushiTask) -> Void
+    var openMenuDestination: (AddTaskMenuDestination) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
@@ -1355,9 +1382,14 @@ struct AddTaskSheet: View {
     @State private var showingDatePicker = false
     @State private var showingTimePicker = false
 
-    init(daypart: Daypart, addTask: @escaping (SushiTask) -> Void) {
+    init(
+        daypart: Daypart,
+        addTask: @escaping (SushiTask) -> Void,
+        openMenuDestination: @escaping (AddTaskMenuDestination) -> Void
+    ) {
         self.daypart = daypart
         self.addTask = addTask
+        self.openMenuDestination = openMenuDestination
         _dueDate = State(initialValue: Self.defaultDueDate(for: daypart))
     }
 
@@ -1384,6 +1416,17 @@ struct AddTaskSheet: View {
                     x: artworkFrame.minX + artworkFrame.width * 0.915,
                     y: artworkFrame.minY + artworkFrame.height * 0.471
                 )
+
+                // The order artwork paints the bottom menu, so it needs its own tap zones.
+                menuHitZone("Home", centerX: 0.13, artworkFrame: artworkFrame) {
+                    dismiss()
+                }
+                menuHitZone("Open Collection", centerX: 0.685, artworkFrame: artworkFrame) {
+                    openMenuDestination(.collection)
+                }
+                menuHitZone("Open Achievements", centerX: 0.870, artworkFrame: artworkFrame) {
+                    openMenuDestination(.achievements)
+                }
 
                 AddTaskTextCleanupLayer(artworkFrame: artworkFrame)
 
@@ -1512,6 +1555,24 @@ struct AddTaskSheet: View {
             )
         )
         dismiss()
+    }
+
+    private func menuHitZone(
+        _ label: String,
+        centerX: CGFloat,
+        artworkFrame: CGRect,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Color.black.opacity(0.001)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .frame(width: artworkFrame.width * 0.17, height: artworkFrame.height * 0.08)
+        .position(
+            x: artworkFrame.minX + artworkFrame.width * centerX,
+            y: artworkFrame.minY + artworkFrame.height * 0.945
+        )
     }
 
     private func orderArtworkFrame(container: CGSize) -> CGRect {
