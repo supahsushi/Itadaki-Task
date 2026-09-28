@@ -151,14 +151,7 @@ struct CollectionCharacterProfileView: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 ScrollView(showsIndicators: false) {
-                    if UIImage(named: character.profilePageAssetName) != nil {
-                        profilePageArtwork(width: proxy.size.width)
-                    } else {
-                        VStack(spacing: 0) {
-                            profileHero(width: proxy.size.width, safeTop: proxy.safeAreaInsets.top)
-                            profileDetails
-                        }
-                    }
+                    profilePageArtwork(width: proxy.size.width)
                 }
                 .ignoresSafeArea()
                 .background(profileBackground.ignoresSafeArea())
