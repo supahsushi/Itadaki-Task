@@ -190,13 +190,14 @@ struct PremiumSheet: View {
                 }
                 .disabled(store.isPurchasing)
                 .padding(.horizontal, 20)
-
-                Button("Restore Purchase") {
-                    Task { await store.restore() }
-                }
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(ink.opacity(0.7))
             }
+
+            // Always available, including after purchase (e.g. a new device or reinstall).
+            Button("Restore Purchase") {
+                Task { await store.restore() }
+            }
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .foregroundStyle(ink.opacity(0.7))
 
             if let message = store.errorMessage {
                 Text(message)

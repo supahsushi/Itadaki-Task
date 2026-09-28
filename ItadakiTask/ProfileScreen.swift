@@ -16,6 +16,8 @@ struct ProfileScreen: View {
     @ObservedObject private var premium = PremiumStore.shared
     @State private var showingPremium = false
     @State private var showingAlarms = false
+    @State private var isRestoring = false
+    @State private var restoreMessage: String?
     @State private var showingNameEditor = false
     @State private var draftName = ""
 
@@ -75,6 +77,7 @@ struct ProfileScreen: View {
                 totalCard(mapper: mapper)
                 collectionRows(mapper: mapper)
                 premiumButton(mapper: mapper)
+                restoreButton(mapper: mapper)
                 alarmButton(mapper: mapper)
                 navigationZones(mapper: mapper)
             }
@@ -88,6 +91,14 @@ struct ProfileScreen: View {
         }
         .sheet(isPresented: $showingAlarms) {
             ChefAlarmPickerSheet()
+        }
+        .alert(
+            "Restore Purchase",
+            isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(restoreMessage ?? "")
         }
         .alert("Your name", isPresented: $showingNameEditor) {
             TextField("Name", text: $draftName)
@@ -248,6 +259,49 @@ struct ProfileScreen: View {
         .accessibilityLabel(premium.isPremium ? "Premium unlocked" : "Unlock Premium reminders")
     }
 
+    /// Small link under the Premium button so a previous purchase can be restored
+    /// (Apple requires a visible restore option for non-consumable purchases).
+    private func restoreButton(mapper: ArtworkMapper) -> some View {
+        let scale = mapper.scale
+        return Button {
+            Task { await restore() }
+        } label: {
+            HStack(spacing: 8 * scale) {
+                if isRestoring {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 18 * scale, weight: .black))
+                }
+                Text("Restore Purchase")
+                    .font(.system(size: 22 * scale, weight: .bold, design: .rounded))
+                    .underline()
+            }
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.7), radius: 3, y: 1)
+            .padding(.horizontal, 18 * scale)
+            .frame(height: 40 * scale)
+            .background(Color.black.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isRestoring)
+        .position(mapper.point(CGPoint(x: 426, y: 1462)))
+        .accessibilityLabel("Restore Purchase")
+    }
+
+    private func restore() async {
+        isRestoring = true
+        await premium.restore()
+        isRestoring = false
+        if premium.isPremium {
+            restoreMessage = "Premium is active on this Apple ID. Your Chef reminders are ready! 🍣"
+        } else {
+            restoreMessage = premium.errorMessage ?? "No previous Premium purchase was found."
+        }
+    }
+
     private func alarmButton(mapper: ArtworkMapper) -> some View {
         let scale = mapper.scale
         return Button {
@@ -268,7 +322,7 @@ struct ProfileScreen: View {
             .shadow(color: .black.opacity(0.30), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
-        .position(mapper.point(CGPoint(x: 426, y: 1476)))
+        .position(mapper.point(CGPoint(x: 426, y: 1530)))
         .accessibilityLabel("Chef alarm sounds")
     }
 
