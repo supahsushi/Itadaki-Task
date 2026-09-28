@@ -402,6 +402,7 @@ struct ContentView: View {
 
     @State private var tasks: [SushiTask] = []
     @State private var showingAddTask = false
+    @State private var editingTask: SushiTask?
     @State private var showingAchievements = false
     @State private var showingCollection = false
     @State private var menuDestinationAfterAddTask: AddTaskMenuDestination?
@@ -483,6 +484,9 @@ struct ContentView: View {
                         },
                         delete: { task in
                             delete(task)
+                        },
+                        edit: { task in
+                            editingTask = task
                         }
                     )
                     .frame(width: rowArea.width, height: rowArea.height)
@@ -503,6 +507,19 @@ struct ContentView: View {
             presentNextPendingCustomerArrivalIfNeeded()
             presentNextPendingAchievementUnlockIfNeeded()
             requestHealthKitAuthorizationIfNeeded()
+        }
+        .fullScreenCover(item: $editingTask, onDismiss: openMenuDestinationAfterAddTask) { task in
+            AddTaskSheet(
+                daypart: daypart,
+                editing: task,
+                addTask: { updated in
+                    update(updated)
+                },
+                openMenuDestination: { destination in
+                    menuDestinationAfterAddTask = destination
+                    editingTask = nil
+                }
+            )
         }
         .fullScreenCover(isPresented: $showingAddTask, onDismiss: openMenuDestinationAfterAddTask) {
             AddTaskSheet(
@@ -649,6 +666,15 @@ struct ContentView: View {
             width: width,
             height: height
         )
+    }
+
+    /// Saves edits to an existing task and reschedules its reminders.
+    private func update(_ task: SushiTask) {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        LocalNotificationScheduler.shared.cancelReminder(for: tasks[index])
+        tasks[index] = task
+        saveTasks()
+        LocalNotificationScheduler.shared.scheduleReminder(for: task)
     }
 
     /// Removes a task (and, for a repeating task, all of its future repeats).
@@ -1481,6 +1507,7 @@ struct TaskBoardView: View {
     var rowSpacing: CGFloat
     var complete: (SushiTask) -> Void
     var delete: (SushiTask) -> Void
+    var edit: (SushiTask) -> Void
 
     var body: some View {
         VStack(spacing: 5) {
@@ -1499,7 +1526,11 @@ struct TaskBoardView: View {
                                 daypart: daypart,
                                 mealIsFull: mealIsFull,
                                 isEating: recentlyEatenTaskIDs.contains(task.id),
-                                rowHeight: rowHeight
+                                rowHeight: rowHeight,
+                                edit: {
+                                    guard !isSwiping else { return }
+                                    edit(task)
+                                }
                             ) {
                                 // A left swipe often starts on the check circle; don't let it complete the task.
                                 guard !isSwiping else { return }
@@ -1580,7 +1611,12 @@ struct TaskRow: View {
     var mealIsFull: Bool
     var isEating: Bool
     var rowHeight: CGFloat
+    var edit: () -> Void = {}
     var complete: () -> Void
+
+    private var textColor: Color {
+        task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33)
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1594,12 +1630,36 @@ struct TaskRow: View {
             }
             .frame(width: 16)
 
-            Text(task.title)
-                .font(.system(size: 15, weight: .black, design: .rounded))
-                .foregroundStyle(task.isEaten ? Color(red: 0.40, green: 0.38, blue: 0.36) : Color(red: 0.02, green: 0.12, blue: 0.33))
-                .strikethrough(task.isEaten, color: .secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
+            // Tap the title area to edit the task.
+            Button(action: edit) {
+                HStack(spacing: 6) {
+                    Text(task.title)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundStyle(textColor)
+                        .strikethrough(task.isEaten, color: .secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(0)
+
+                    HStack(spacing: 4) {
+                        Text("· \(task.dueDate.formatted(date: .omitted, time: .shortened))")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                        if task.recurrence != .none {
+                            Image(systemName: "repeat")
+                                .font(.system(size: 11, weight: .black))
+                                .accessibilityLabel("Repeats \(task.recurrence.rawValue)")
+                        }
+                    }
+                    .foregroundStyle(textColor.opacity(0.62))
+                    .fixedSize()
+                    .layoutPriority(1)
+
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Edit task")
 
             Spacer()
 
@@ -1680,6 +1740,8 @@ enum AddTaskMenuDestination {
 
 struct AddTaskSheet: View {
     var daypart: Daypart
+    /// The task being edited, or nil when adding a new one.
+    var editing: SushiTask? = nil
     var addTask: (SushiTask) -> Void
     var openMenuDestination: (AddTaskMenuDestination) -> Void
 
@@ -1693,13 +1755,18 @@ struct AddTaskSheet: View {
 
     init(
         daypart: Daypart,
+        editing: SushiTask? = nil,
         addTask: @escaping (SushiTask) -> Void,
         openMenuDestination: @escaping (AddTaskMenuDestination) -> Void
     ) {
         self.daypart = daypart
+        self.editing = editing
         self.addTask = addTask
         self.openMenuDestination = openMenuDestination
-        _dueDate = State(initialValue: Self.defaultDueDate(for: daypart))
+        _title = State(initialValue: editing?.title ?? "")
+        _dueDate = State(initialValue: editing?.dueDate ?? Self.defaultDueDate(for: daypart))
+        _repeatOption = State(initialValue: editing.map { AddTaskRepeatOption(recurrence: $0.recurrence) } ?? .none)
+        _category = State(initialValue: editing?.category ?? .other)
     }
 
     private var layout: OrderArtworkLayout { .layout(for: daypart) }
@@ -1809,15 +1876,23 @@ struct AddTaskSheet: View {
 
     private func submitTask() {
         guard !trimmedTitle.isEmpty else { return }
-        addTask(
-            SushiTask(
-                title: String(trimmedTitle.prefix(60)),
-                category: category,
-                dueDate: dueDate,
-                recurrence: repeatOption.recurrence,
-                hasReminder: true
+        if var task = editing {
+            task.title = String(trimmedTitle.prefix(60))
+            task.category = category
+            task.dueDate = dueDate
+            task.recurrence = repeatOption.recurrence
+            addTask(task)
+        } else {
+            addTask(
+                SushiTask(
+                    title: String(trimmedTitle.prefix(60)),
+                    category: category,
+                    dueDate: dueDate,
+                    recurrence: repeatOption.recurrence,
+                    hasReminder: true
+                )
             )
-        )
+        }
         dismiss()
     }
 
@@ -2163,6 +2238,16 @@ enum AddTaskRepeatOption: String, CaseIterable, Identifiable {
     case tomorrow
 
     var id: String { rawValue }
+
+    /// The Add Task option that shows an existing task's repeat setting.
+    init(recurrence: TaskRecurrence) {
+        switch recurrence {
+        case .daily: self = .daily
+        case .weekdays: self = .weekdays
+        case .weekends: self = .weekends
+        case .none, .weekly, .custom: self = .none
+        }
+    }
 
     var recurrence: TaskRecurrence {
         switch self {
