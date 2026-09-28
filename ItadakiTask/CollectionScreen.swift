@@ -155,6 +155,17 @@ struct CollectionCharacterProfileView: View {
     private let maxPageWidth: CGFloat = 640
 
     var body: some View {
+        if UIImage(named: ProfileCardImage.assetName(for: character)) != nil {
+            ProfileCardImage(character: character, firstVisitedText: firstVisitedText) {
+                dismiss()
+            }
+        } else {
+            drawnProfile
+        }
+    }
+
+    /// Fallback for a character without a finished profile image in the asset catalog.
+    private var drawnProfile: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 ScrollView(showsIndicators: false) {
@@ -657,6 +668,100 @@ struct CollectionCharacterProfileView: View {
             blossom(size: 14 * scale).offset(x: 16 * scale, y: 7 * scale)
         }
         .frame(width: 52 * scale, height: 38 * scale)
+    }
+}
+
+/// A finished, full-page profile illustration from Screenshots/Collections.
+/// Everything is baked into the art except the First Visited date, which is
+/// written into the empty box so it stays dynamic.
+private struct ProfileCardImage: View {
+    var character: CollectionCharacter
+    var firstVisitedText: String
+    var onBack: () -> Void
+
+    /// Size of the source illustrations, in pixels.
+    private static let designSize = CGSize(width: 850, height: 1850)
+    /// Where the date starts inside the First Visited box, in source pixels.
+    private static let firstVisitedX: CGFloat = 172
+    /// Vertical center of the First Visited box's writing line, per character, in source pixels.
+    private static let firstVisitedY: [String: CGFloat] = [
+        "tuna-the-gamer": 1696,
+        "salmon-the-food-tester": 1676,
+        "tamago-the-chill-one": 1670,
+        "uni-the-fancy-foodie": 1676,
+        "unagi-the-surfer": 1660,
+        "mackerel-the-photographer": 1644,
+        "squid-the-dj": 1656,
+        "yellowtail-the-traveler": 1708,
+        "scallop-the-fisherman": 1644,
+        "mama-roe-the-shopper": 1716,
+        "red-snapper-the-taiko-master": 1686,
+        "sushi-roll-the-librarian": 1666,
+        "lobster-crab-the-sumo-bros": 1666
+    ]
+
+    static func assetName(for character: CollectionCharacter) -> String {
+        character.artworkAssetName + "Profile"
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let scale = width / Self.designSize.width
+            let height = Self.designSize.height * scale
+            let dateY = (Self.firstVisitedY[character.id] ?? 1670) * scale
+
+            ZStack(alignment: .topLeading) {
+                ScrollView(showsIndicators: false) {
+                    Image(Self.assetName(for: character))
+                        .resizable()
+                        .frame(width: width, height: height)
+                        .overlay(alignment: .topLeading) {
+                            Text(firstVisitedText)
+                                .font(.system(size: 27 * scale, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color(red: 0.36, green: 0.18, blue: 0.08))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .frame(width: 300 * scale, alignment: .leading)
+                                .frame(height: 40 * scale)
+                                .offset(x: Self.firstVisitedX * scale, y: dateY - 20 * scale)
+                                .accessibilityHidden(true)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(accessibilitySummary)
+                }
+                .ignoresSafeArea()
+                .background(Color(red: 0.99, green: 0.92, blue: 0.84).ignoresSafeArea())
+
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(Color(red: 0.24, green: 0.12, blue: 0.06))
+                        .frame(width: 42, height: 42)
+                        .background(Circle().fill(Color(red: 1.0, green: 0.92, blue: 0.80)))
+                        .overlay(Circle().stroke(Color.white.opacity(0.80), lineWidth: 2))
+                        .shadow(color: .black.opacity(0.24), radius: 8, y: 4)
+                }
+                .accessibilityLabel("Back")
+                // The ZStack already sits inside the safe area, so this is just below the status bar.
+                .padding(.leading, 10)
+                .padding(.top, 8)
+            }
+        }
+        // Dark only so the status bar text turns white over the artwork.
+        .preferredColorScheme(.dark)
+    }
+
+    private var accessibilitySummary: String {
+        [
+            "\(character.name), \(character.role).",
+            character.quote,
+            "About: \(character.about)",
+            "Personality: \(character.personality)",
+            "Loves: \(character.loves)",
+            "Fun fact: \(character.funFact)",
+            "First visited: \(firstVisitedText)"
+        ].joined(separator: " ")
     }
 }
 
