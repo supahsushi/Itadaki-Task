@@ -1455,7 +1455,7 @@ struct TaskBoardView: View {
                     ForEach(tasks) { task in
                         SwipeToDeleteRow(rowHeight: rowHeight) {
                             delete(task)
-                        } content: {
+                        } content: { isSwiping in
                             TaskRow(
                                 task: task,
                                 daypart: daypart,
@@ -1463,6 +1463,8 @@ struct TaskBoardView: View {
                                 isEating: recentlyEatenTaskIDs.contains(task.id),
                                 rowHeight: rowHeight
                             ) {
+                                // A left swipe often starts on the check circle; don't let it complete the task.
+                                guard !isSwiping else { return }
                                 complete(task)
                             }
                         }
@@ -1481,10 +1483,13 @@ struct TaskBoardView: View {
 struct SwipeToDeleteRow<Content: View>: View {
     var rowHeight: CGFloat
     var onDelete: () -> Void
-    @ViewBuilder var content: Content
+    /// Receives whether a swipe is in progress or the trash button is showing,
+    /// so taps inside the row can be ignored then.
+    @ViewBuilder var content: (_ isSwiping: Bool) -> Content
 
     @State private var offset: CGFloat = 0
     @State private var isOpen = false
+    @State private var isDragging = false
 
     private var revealWidth: CGFloat { rowHeight * 1.6 }
 
@@ -1504,13 +1509,14 @@ struct SwipeToDeleteRow<Content: View>: View {
             .opacity(offset < 0 ? 1 : 0)
             .accessibilityHidden(true)
 
-            content
+            content(isDragging || isOpen)
                 .offset(x: offset)
                 // Simultaneous so vertical scrolling of the board keeps working.
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 18)
                         .onChanged { value in
                             guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            isDragging = true
                             let start = isOpen ? -revealWidth : 0
                             offset = min(0, max(-revealWidth * 1.3, start + value.translation.width))
                         }
@@ -1518,6 +1524,10 @@ struct SwipeToDeleteRow<Content: View>: View {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                                 isOpen = offset < -revealWidth / 2
                                 offset = isOpen ? -revealWidth : 0
+                            }
+                            // Keep taps blocked briefly so the finger lifting off the circle doesn't count.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                isDragging = false
                             }
                         }
                 )
