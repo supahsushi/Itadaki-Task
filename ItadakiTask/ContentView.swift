@@ -220,7 +220,8 @@ enum Daypart {
 
     func homeLayout(mealIsFull: Bool) -> HomeArtworkLayout {
         switch (self, mealIsFull) {
-        case (.morning, false), (.noon, false): .dayChef
+        case (.morning, false): .morningChef
+        case (.noon, false): .noonChef
         case (.night, false): .nightChef
         case (.morning, true), (.noon, true): .dayThank
         case (.night, true): .nightThank
@@ -275,19 +276,34 @@ struct HomeArtworkLayout {
         Color(red: r, green: g, blue: b)
     }
 
-    static let dayChef = HomeArtworkLayout(
-        artworkSize: CGSize(width: 853, height: 1844),
+    static let morningChef = HomeArtworkLayout(
+        artworkSize: CGSize(width: 850, height: 1850),
         profilePatch: nil,
-        nameLeadingX: 120, nameCenterY: 104, nameFontSize: 24,
-        levelCenterY: 129, levelFontSize: 21,
-        meterRect: CGRect(x: 119, y: 142, width: 86, height: 11),
+        nameLeadingX: 120, nameCenterY: 101, nameFontSize: 24,
+        levelCenterY: 126, levelFontSize: 21,
+        meterRect: CGRect(x: 119, y: 140, width: 86, height: 11),
         meterFill: dayMeter,
         countPatch: nil,
         countCenter: CGPoint(x: 766, y: 113), countFontSize: 42,
         labelPatch: nil,
         labelCenter: CGPoint(x: 740, y: 147), labelFontSize: 23, labelText: "sushi eaten today",
-        firstRowTop: 914, rowPitch: 80.75, rowHeight: 74, rowMinX: 64, rowMaxX: 793,
-        addTaskButton: CGRect(x: 622, y: 852, width: 170, height: 50)
+        firstRowTop: 912, rowPitch: 80, rowHeight: 74, rowMinX: 64, rowMaxX: 790,
+        addTaskButton: CGRect(x: 616, y: 851, width: 172, height: 50)
+    )
+
+    static let noonChef = HomeArtworkLayout(
+        artworkSize: CGSize(width: 853, height: 1844),
+        profilePatch: nil,
+        nameLeadingX: 120, nameCenterY: 101, nameFontSize: 24,
+        levelCenterY: 126, levelFontSize: 21,
+        meterRect: CGRect(x: 119, y: 140, width: 86, height: 11),
+        meterFill: dayMeter,
+        countPatch: nil,
+        countCenter: CGPoint(x: 768, y: 113), countFontSize: 42,
+        labelPatch: nil,
+        labelCenter: CGPoint(x: 742, y: 147), labelFontSize: 23, labelText: "sushi eaten today",
+        firstRowTop: 908, rowPitch: 67, rowHeight: 63, rowMinX: 64, rowMaxX: 796,
+        addTaskButton: CGRect(x: 623, y: 851, width: 170, height: 48)
     )
 
     static let nightChef = HomeArtworkLayout(
@@ -301,8 +317,22 @@ struct HomeArtworkLayout {
         countCenter: CGPoint(x: 766, y: 135), countFontSize: 44,
         labelPatch: nil,
         labelCenter: CGPoint(x: 731, y: 171), labelFontSize: 25, labelText: "Sushi Eaten Today",
-        firstRowTop: 862, rowPitch: 70.25, rowHeight: 65, rowMinX: 35, rowMaxX: 810,
+        firstRowTop: 863, rowPitch: 70.5, rowHeight: 65, rowMinX: 36, rowMaxX: 810,
         addTaskButton: CGRect(x: 640, y: 803, width: 165, height: 44)
+    )
+
+    /// The gachapon unlock screen's header panels (the rest of that screen is animation).
+    static let gachapon = HomeArtworkLayout(
+        artworkSize: CGSize(width: 851, height: 1848),
+        profilePatch: nil,
+        nameLeadingX: 122, nameCenterY: 110, nameFontSize: 25,
+        levelCenterY: 136, levelFontSize: 21,
+        meterRect: CGRect(x: 122, y: 151, width: 95, height: 11),
+        meterFill: nightMeter,
+        countPatch: nil,
+        countCenter: CGPoint(x: 772, y: 117), countFontSize: 42,
+        labelPatch: nil,
+        labelCenter: CGPoint(x: 740, y: 162), labelFontSize: 22, labelText: "Sushi Eaten Today"
     )
 
     static let dayThank = HomeArtworkLayout(
@@ -502,7 +532,15 @@ struct ContentView: View {
             CollectionScreen(characters: collectionCharacters)
         }
         .fullScreenCover(item: $currentAchievementUnlock) { achievement in
-            GachaponUnlockView(achievement: achievement) {
+            GachaponUnlockView(
+                achievement: achievement,
+                header: GachaponHeader(
+                    name: displayName,
+                    levelInfo: streakLevelInfo,
+                    eatenCount: sushiEatenToday,
+                    maxCount: mealLimit
+                )
+            ) {
                 collectAchievementUnlock(achievement)
             }
         }

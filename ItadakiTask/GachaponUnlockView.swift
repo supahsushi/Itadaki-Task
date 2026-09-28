@@ -1,7 +1,16 @@
 import SwiftUI
 
+/// Live values for the name and sushi-count panels painted empty in the gachapon art.
+struct GachaponHeader {
+    var name: String
+    var levelInfo: StreakLevelInfo
+    var eatenCount: Int
+    var maxCount: Int
+}
+
 struct GachaponUnlockView: View {
     var achievement: Achievement
+    var header: GachaponHeader? = nil
     var collect: () -> Void
 
     @State private var machineShake = false
@@ -31,6 +40,16 @@ struct GachaponUnlockView: View {
                 Color.black.opacity(0.10)
                     .ignoresSafeArea()
 
+                if let header {
+                    let layout = HomeArtworkLayout.gachapon
+                    let mapper = ArtworkMapper(
+                        frame: filledArtworkFrame(container: proxy.size, artwork: layout.artworkSize),
+                        artworkSize: layout.artworkSize
+                    )
+                    ProfileStreakLevelOverlay(name: header.name, levelInfo: header.levelInfo, layout: layout, mapper: mapper)
+                    MealCountOverlay(eatenCount: header.eatenCount, maxCount: header.maxCount, layout: layout, mapper: mapper)
+                }
+
                 KnobTurnOverlay(isTurning: knobTurns, size: proxy.size)
 
                 capsuleLayer(size: proxy.size)
@@ -43,7 +62,22 @@ struct GachaponUnlockView: View {
             .ignoresSafeArea()
             .onAppear(perform: runSequence)
         }
+        // Measure the whole screen, not just the safe area, so the art fills it
+        // (no black strip) and the animation positions line up with the painted machine.
+        .ignoresSafeArea()
         .preferredColorScheme(.dark)
+    }
+
+    /// Where the aspect-filled background art lands on screen.
+    private func filledArtworkFrame(container: CGSize, artwork: CGSize) -> CGRect {
+        let scale = max(container.width / artwork.width, container.height / artwork.height)
+        let size = CGSize(width: artwork.width * scale, height: artwork.height * scale)
+        return CGRect(
+            x: (container.width - size.width) / 2,
+            y: (container.height - size.height) / 2,
+            width: size.width,
+            height: size.height
+        )
     }
 
     private func capsuleLayer(size: CGSize) -> some View {
