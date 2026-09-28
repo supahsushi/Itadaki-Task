@@ -401,12 +401,9 @@ struct ContentView: View {
     @AppStorage("sushiReplayWelcomeAchievementIDs") private var sushiReplayWelcomeAchievementIDs = ""
 
     @State private var tasks: [SushiTask] = []
-    @State private var showingAddTask = false
-    @State private var editingTask: SushiTask?
-    @State private var showingAchievements = false
-    @State private var showingCollection = false
-    @State private var showingProfile = false
-    @State private var menuDestinationAfterAddTask: AddTaskMenuDestination?
+    /// The bottom-menu screen shown over the task list (Chef), or nil for the task list itself.
+    /// One full-screen container swaps between them, so tabs change in place.
+    @State private var activeScreen: MenuScreen?
     @State private var showingNamePrompt = false
     @State private var draftName = ""
     @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
@@ -453,21 +450,21 @@ struct ContentView: View {
                 OrderMenuHitZones(
                     artworkFrame: artworkFrame,
                     openProfile: {
-                        showingProfile = true
+                        show(.profile)
                     },
                     openCollection: {
-                        showingCollection = true
+                        show(.collection)
                     },
                     openAchievements: {
-                        showingAchievements = true
+                        show(.achievements)
                     }
                 ) {
-                    showingAddTask = true
+                    show(.orders)
                 }
 
                 if !mealIsFull {
                     Button {
-                        showingAddTask = true
+                        show(.orders)
                     } label: {
                         Color.black.opacity(0.001)
                     }
@@ -490,7 +487,7 @@ struct ContentView: View {
                             delete(task)
                         },
                         edit: { task in
-                            editingTask = task
+                            activeScreen = .editing(task)
                         }
                     )
                     .frame(width: rowArea.width, height: rowArea.height)
@@ -516,60 +513,8 @@ struct ContentView: View {
                 syncRemindersWithPremium()
             }
         }
-        .fullScreenCover(isPresented: $showingProfile, onDismiss: openMenuDestinationAfterAddTask) {
-            ProfileScreen(
-                name: $customerName,
-                levelInfo: streakLevelInfo,
-                totalSushiEaten: sushiTotalCompletions,
-                eatenToday: sushiEatenToday,
-                mealLimit: mealLimit,
-                achievements: achievements,
-                characters: collectionCharacters,
-                navigate: { destination in
-                    menuDestinationAfterAddTask = destination
-                    showingProfile = false
-                }
-            )
-        }
-        .fullScreenCover(item: $editingTask, onDismiss: openMenuDestinationAfterAddTask) { task in
-            AddTaskSheet(
-                daypart: daypart,
-                editing: task,
-                addTask: { updated in
-                    update(updated)
-                },
-                openMenuDestination: { destination in
-                    menuDestinationAfterAddTask = destination
-                    editingTask = nil
-                }
-            )
-        }
-        .fullScreenCover(isPresented: $showingAddTask, onDismiss: openMenuDestinationAfterAddTask) {
-            AddTaskSheet(
-                daypart: daypart,
-                addTask: { task in
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
-                        tasks.append(task)
-                        saveTasks()
-                    }
-                    LocalNotificationScheduler.shared.scheduleReminder(for: task)
-                },
-                openMenuDestination: { destination in
-                    menuDestinationAfterAddTask = destination
-                    showingAddTask = false
-                }
-            )
-        }
-        .fullScreenCover(isPresented: $showingAchievements) {
-            AchievementsScreen(
-                achievements: achievements,
-                pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks),
-                collectedUnlockIDs: decodedStringSet(sushiCollectedAchievementUnlocks),
-                collectionCharacters: collectionCharacters
-            )
-        }
-        .fullScreenCover(isPresented: $showingCollection) {
-            CollectionScreen(characters: collectionCharacters)
+        .fullScreenCover(isPresented: activeScreenIsPresented, onDismiss: menuScreenDismissed) {
+            menuScreenContent
         }
         .fullScreenCover(item: $currentAchievementUnlock) { achievement in
             GachaponUnlockView(
@@ -606,32 +551,93 @@ struct ContentView: View {
             // Scheduled reminders keep the sound they were created with, so reschedule them.
             syncRemindersWithPremium()
         }
-        .onChange(of: showingAchievements) { _, isPresented in
-            guard !isPresented else { return }
-            presentNextPendingCustomerArrivalIfNeeded()
-            presentNextPendingAchievementUnlockIfNeeded()
+    }
+
+    private var activeScreenIsPresented: Binding<Bool> {
+        Binding(
+            get: { activeScreen != nil },
+            set: { if !$0 { activeScreen = nil } }
+        )
+    }
+
+    /// Opens a bottom-menu screen. If one is already showing, it's swapped in place
+    /// with a quick cross-fade instead of sliding back to the task list first.
+    private func show(_ destination: AddTaskMenuDestination) {
+        let screen: MenuScreen
+        switch destination {
+        case .profile: screen = .profile
+        case .orders: screen = .orders
+        case .collection: screen = .collection
+        case .achievements: screen = .achievements
         }
-        .onChange(of: showingCollection) { _, isPresented in
-            guard !isPresented else { return }
-            presentNextPendingCustomerArrivalIfNeeded()
-            presentNextPendingAchievementUnlockIfNeeded()
+        if activeScreen == nil {
+            activeScreen = screen
+        } else {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeScreen = screen
+            }
         }
     }
 
-    /// Add Task covers the home screen, so a bottom-menu tap there closes it first
-    /// and opens the destination once the dismissal finishes.
-    private func openMenuDestinationAfterAddTask() {
-        guard let destination = menuDestinationAfterAddTask else { return }
-        menuDestinationAfterAddTask = nil
-        switch destination {
-        case .profile:
-            showingProfile = true
-        case .orders:
-            showingAddTask = true
-        case .collection:
-            showingCollection = true
-        case .achievements:
-            showingAchievements = true
+    private func menuScreenDismissed() {
+        presentNextPendingCustomerArrivalIfNeeded()
+        presentNextPendingAchievementUnlockIfNeeded()
+    }
+
+    @ViewBuilder
+    private var menuScreenContent: some View {
+        ZStack {
+            switch activeScreen {
+            case .profile:
+                ProfileScreen(
+                    name: $customerName,
+                    levelInfo: streakLevelInfo,
+                    totalSushiEaten: sushiTotalCompletions,
+                    eatenToday: sushiEatenToday,
+                    mealLimit: mealLimit,
+                    achievements: achievements,
+                    characters: collectionCharacters,
+                    navigate: show
+                )
+                .transition(.opacity)
+            case .orders:
+                AddTaskSheet(
+                    daypart: daypart,
+                    addTask: { task in
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
+                            tasks.append(task)
+                            saveTasks()
+                        }
+                        LocalNotificationScheduler.shared.scheduleReminder(for: task)
+                    },
+                    openMenuDestination: show
+                )
+                .transition(.opacity)
+            case .editing(let task):
+                AddTaskSheet(
+                    daypart: daypart,
+                    editing: task,
+                    addTask: { updated in
+                        update(updated)
+                    },
+                    openMenuDestination: show
+                )
+                .id(task.id)
+                .transition(.opacity)
+            case .collection:
+                CollectionScreen(characters: collectionCharacters)
+                    .transition(.opacity)
+            case .achievements:
+                AchievementsScreen(
+                    achievements: achievements,
+                    pendingUnlockIDs: decodedStringArray(sushiPendingAchievementUnlocks),
+                    collectedUnlockIDs: decodedStringSet(sushiCollectedAchievementUnlocks),
+                    collectionCharacters: collectionCharacters
+                )
+                .transition(.opacity)
+            case nil:
+                Color.clear
+            }
         }
     }
 
@@ -875,7 +881,7 @@ struct ContentView: View {
     private func presentNextPendingAchievementUnlockIfNeeded() {
         guard currentAchievementUnlock == nil else { return }
         guard currentCustomerArrival == nil else { return }
-        guard !showingAchievements else { return }
+        guard activeScreen == nil else { return }
         guard decodedStringArray(sushiPendingCustomerArrivals).isEmpty else {
             presentNextPendingCustomerArrivalIfNeeded()
             return
@@ -934,8 +940,7 @@ struct ContentView: View {
     private func presentNextPendingCustomerArrivalIfNeeded() -> Bool {
         guard currentAchievementUnlock == nil else { return false }
         guard currentCustomerArrival == nil else { return true }
-        guard !showingAchievements else { return false }
-        guard !showingCollection else { return false }
+        guard activeScreen == nil else { return false }
 
         let pendingIDs = decodedStringArray(sushiPendingCustomerArrivals)
         guard let nextID = pendingIDs.first,
@@ -1807,7 +1812,16 @@ struct EatenSparkles: View {
     }
 }
 
-/// A bottom-menu destination opened after the current full-screen view closes.
+/// A screen shown in the bottom-menu container over the task list.
+enum MenuScreen: Equatable {
+    case profile
+    case orders
+    case editing(SushiTask)
+    case collection
+    case achievements
+}
+
+/// A bottom-menu destination a screen can switch to.
 enum AddTaskMenuDestination {
     case profile
     case orders
