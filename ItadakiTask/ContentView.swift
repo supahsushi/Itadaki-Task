@@ -1724,7 +1724,8 @@ struct AddTaskSheet: View {
             }
         }
         .sheet(isPresented: $showingTimePicker) {
-            pickerSheet(title: "Choose Time") {
+            // The time wheel is short, so the sheet hugs it instead of leaving empty space below.
+            pickerSheet(title: "Choose Time", detents: [.height(330)]) {
                 DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
                     .datePickerStyle(.wheel)
                     .labelsHidden()
@@ -1866,7 +1867,11 @@ struct AddTaskSheet: View {
         )
     }
 
-    private func pickerSheet<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func pickerSheet<Content: View>(
+        title: String,
+        detents: Set<PresentationDetent> = [.fraction(0.62), .large],
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         NavigationStack {
             VStack(spacing: 0) {
                 content()
@@ -1886,7 +1891,7 @@ struct AddTaskSheet: View {
                 }
             }
         }
-        .presentationDetents([.fraction(0.62), .large])
+        .presentationDetents(detents)
     }
 
     private static func defaultDueDate(for daypart: Daypart) -> Date {
