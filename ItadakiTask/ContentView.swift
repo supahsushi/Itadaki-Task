@@ -362,31 +362,24 @@ struct HomeArtworkLayout {
         labelCenter: CGPoint(x: 733, y: 160), labelFontSize: 21, labelText: "sushi eaten today"
     )
 
-    static let dayThank = HomeArtworkLayout(
-        artworkSize: CGSize(width: 851, height: 1848),
-        profilePatch: Patch(rect: CGRect(x: 118, y: 96, width: 107, height: 72), top: brown(0.304, 0.111, 0.040), bottom: brown(0.289, 0.113, 0.056)),
-        nameLeadingX: 123, nameCenterY: 115, nameFontSize: 25,
-        levelCenterY: 139, levelFontSize: 21,
-        meterRect: CGRect(x: 122, y: 151, width: 90, height: 11),
-        meterFill: dayMeter,
-        countPatch: Patch(rect: CGRect(x: 712, y: 104, width: 116, height: 37), top: brown(0.298, 0.110, 0.044), bottom: brown(0.258, 0.092, 0.038)),
-        countCenter: CGPoint(x: 762, y: 123), countFontSize: 42,
-        labelPatch: Patch(rect: CGRect(x: 655, y: 142, width: 177, height: 26), top: brown(0.270, 0.093, 0.028), bottom: brown(0.223, 0.077, 0.026)),
-        labelCenter: CGPoint(x: 736, y: 155), labelFontSize: 24, labelText: "sushi eaten today"
-    )
+    /// "Customer is full" art: empty name and sushi-count panels, like the Add Task art.
+    static let dayThank = thankLayout(artworkSize: CGSize(width: 851, height: 1848), meterFill: dayMeter)
+    static let nightThank = thankLayout(artworkSize: CGSize(width: 851, height: 1847), meterFill: nightMeter)
 
-    static let nightThank = HomeArtworkLayout(
-        artworkSize: CGSize(width: 851, height: 1848),
-        profilePatch: Patch(rect: CGRect(x: 118, y: 97, width: 98, height: 75), top: brown(0.264, 0.112, 0.040), bottom: brown(0.163, 0.070, 0.031)),
-        nameLeadingX: 123, nameCenterY: 116, nameFontSize: 26,
-        levelCenterY: 140, levelFontSize: 22,
-        meterRect: CGRect(x: 122, y: 154, width: 82, height: 10),
-        meterFill: dayMeter,
-        countPatch: Patch(rect: CGRect(x: 712, y: 104, width: 114, height: 38), top: brown(0.201, 0.086, 0.038), bottom: brown(0.167, 0.076, 0.036)),
-        countCenter: CGPoint(x: 762, y: 124), countFontSize: 42,
-        labelPatch: Patch(rect: CGRect(x: 655, y: 143, width: 175, height: 27), top: brown(0.166, 0.074, 0.035), bottom: brown(0.144, 0.064, 0.033)),
-        labelCenter: CGPoint(x: 736, y: 156), labelFontSize: 24, labelText: "sushi eaten today"
-    )
+    private static func thankLayout(artworkSize: CGSize, meterFill: [Color]) -> HomeArtworkLayout {
+        HomeArtworkLayout(
+            artworkSize: artworkSize,
+            profilePatch: nil,
+            nameLeadingX: 127, nameCenterY: 116, nameFontSize: 25,
+            levelCenterY: 142, levelFontSize: 20,
+            meterRect: CGRect(x: 127, y: 156, width: 93, height: 10),
+            meterFill: meterFill,
+            countPatch: nil,
+            countCenter: CGPoint(x: 772, y: 118), countFontSize: 40,
+            labelPatch: nil,
+            labelCenter: CGPoint(x: 733, y: 160), labelFontSize: 21, labelText: "sushi eaten today"
+        )
+    }
 }
 
 /// Converts artwork pixels into screen points for one fitted artwork frame.
