@@ -3,10 +3,20 @@ import SwiftUI
 import UserNotifications
 
 struct SushiTask: Identifiable, Codable, Equatable {
+    /// Timed tasks by time of day first, then tasks with no time.
+    static func boardOrder(_ lhs: SushiTask, _ rhs: SushiTask) -> Bool {
+        if lhs.hasTime != rhs.hasTime {
+            return lhs.hasTime
+        }
+        return lhs.dueDate < rhs.dueDate
+    }
+
     var id = UUID()
     var title: String
     var category: TaskCategory
     var dueDate: Date
+    /// False for tasks with only a date ("No time"); they get no reminder and sort after timed tasks.
+    var hasTime = true
     var recurrence: TaskRecurrence = .none
     var hasReminder = false
     var isEaten = false
@@ -18,6 +28,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         case title
         case category
         case dueDate
+        case hasTime
         case recurrence
         case hasReminder
         case isEaten
@@ -29,6 +40,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         title: String,
         category: TaskCategory,
         dueDate: Date,
+        hasTime: Bool = true,
         recurrence: TaskRecurrence = .none,
         hasReminder: Bool = false,
         isEaten: Bool = false,
@@ -38,6 +50,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         self.title = title
         self.category = category
         self.dueDate = dueDate
+        self.hasTime = hasTime
         self.recurrence = recurrence
         self.hasReminder = hasReminder
         self.isEaten = isEaten
@@ -50,6 +63,7 @@ struct SushiTask: Identifiable, Codable, Equatable {
         title = try container.decode(String.self, forKey: .title)
         category = try container.decode(TaskCategory.self, forKey: .category)
         dueDate = try container.decode(Date.self, forKey: .dueDate)
+        hasTime = try container.decodeIfPresent(Bool.self, forKey: .hasTime) ?? true
         recurrence = try container.decodeIfPresent(TaskRecurrence.self, forKey: .recurrence) ?? .none
         hasReminder = try container.decodeIfPresent(Bool.self, forKey: .hasReminder) ?? false
         isEaten = try container.decodeIfPresent(Bool.self, forKey: .isEaten) ?? false
@@ -646,7 +660,7 @@ struct ContentView: View {
     }
 
     private var activeTasks: [SushiTask] {
-        todaysTasks.filter { !$0.isEaten }.sorted { $0.dueDate < $1.dueDate }
+        todaysTasks.filter { !$0.isEaten }.sorted(by: SushiTask.boardOrder)
     }
 
     private var todaysTasks: [SushiTask] {
@@ -656,7 +670,7 @@ struct ContentView: View {
                 if lhs.isEaten != rhs.isEaten {
                     return !lhs.isEaten
                 }
-                return lhs.dueDate < rhs.dueDate
+                return SushiTask.boardOrder(lhs, rhs)
             }
     }
 
@@ -1139,7 +1153,7 @@ final class LocalNotificationScheduler: @unchecked Sendable {
 
     /// Scheduled reminders are a Premium feature.
     func scheduleReminder(for task: SushiTask) {
-        guard task.hasReminder, PremiumStore.isPremiumCached else { return }
+        guard task.hasReminder, task.hasTime, PremiumStore.isPremiumCached else { return }
 
         Task {
             guard await requestAuthorization() else { return }
@@ -1713,7 +1727,7 @@ struct TaskRow: View {
             Button(action: edit) {
                 HStack(spacing: 6) {
                     Text(task.title)
-                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .font(.system(size: max(18, rowHeight * 0.48), weight: .black, design: .rounded))
                         .foregroundStyle(textColor)
                         .strikethrough(task.isEaten, color: .secondary)
                         .lineLimit(1)
@@ -1721,11 +1735,13 @@ struct TaskRow: View {
                         .layoutPriority(0)
 
                     HStack(spacing: 4) {
-                        Text("· \(task.dueDate.formatted(date: .omitted, time: .shortened))")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                        if task.hasTime {
+                            Text("· \(task.dueDate.formatted(date: .omitted, time: .shortened))")
+                                .font(.system(size: max(15, rowHeight * 0.38), weight: .bold, design: .rounded))
+                        }
                         if task.recurrence != .none {
                             Image(systemName: "repeat")
-                                .font(.system(size: 11, weight: .black))
+                                .font(.system(size: max(13, rowHeight * 0.32), weight: .black))
                                 .accessibilityLabel("Repeats \(task.recurrence.rawValue)")
                         }
                     }
@@ -1839,6 +1855,7 @@ struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var dueDate: Date
+    @State private var hasTime: Bool
     @State private var repeatOption: AddTaskRepeatOption = .none
     @State private var category: TaskCategory = .other
     @State private var remindMe = true
@@ -1859,6 +1876,7 @@ struct AddTaskSheet: View {
         self.openMenuDestination = openMenuDestination
         _title = State(initialValue: editing?.title ?? "")
         _dueDate = State(initialValue: editing?.dueDate ?? Self.defaultDueDate(for: daypart))
+        _hasTime = State(initialValue: editing?.hasTime ?? true)
         _repeatOption = State(initialValue: editing.map { AddTaskRepeatOption(recurrence: $0.recurrence) } ?? .none)
         _category = State(initialValue: editing?.category ?? .other)
         _remindMe = State(initialValue: editing?.hasReminder ?? true)
@@ -1965,10 +1983,26 @@ struct AddTaskSheet: View {
         }
         .sheet(isPresented: $showingTimePicker) {
             // The time wheel is short, so the sheet hugs it instead of leaving empty space below.
-            pickerSheet(title: "Choose Time", detents: [.height(330)]) {
-                DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
+            pickerSheet(title: "Choose Time", detents: [.height(390)]) {
+                VStack(spacing: 12) {
+                    Picker("Time", selection: $hasTime) {
+                        Text("Time").tag(true)
+                        Text("None").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if hasTime {
+                        DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.wheel)
+                            .labelsHidden()
+                    } else {
+                        Text("No set time. This task stays on today's list until you finish it, with no reminder.")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, minHeight: 216)
+                    }
+                }
             }
         }
     }
@@ -1983,6 +2017,7 @@ struct AddTaskSheet: View {
             task.title = String(trimmedTitle.prefix(60))
             task.category = category
             task.dueDate = dueDate
+            task.hasTime = hasTime
             task.recurrence = repeatOption.recurrence
             task.hasReminder = remindMe
             addTask(task)
@@ -1992,6 +2027,7 @@ struct AddTaskSheet: View {
                     title: String(trimmedTitle.prefix(60)),
                     category: category,
                     dueDate: dueDate,
+                    hasTime: hasTime,
                     recurrence: repeatOption.recurrence,
                     hasReminder: remindMe
                 )
@@ -2043,7 +2079,7 @@ struct AddTaskSheet: View {
         let scale = mapper.scale
         let centerY = (layout.timeTile.maxY + layout.repeatRowTop) / 2
         let center = mapper.point(CGPoint(x: layout.field.maxX - 330 - 16 - 62, y: centerY))
-        let isOn = premium.isPremium && remindMe
+        let isOn = premium.isPremium && remindMe && hasTime
 
         return Button {
             if premium.isPremium {
@@ -2069,8 +2105,11 @@ struct AddTaskSheet: View {
             .frame(width: 124 * scale, height: 44 * scale)
             .background(Self.tilePaper, in: Capsule())
             .overlay(Capsule().stroke(Color(red: 0.91, green: 0.78, blue: 0.65), lineWidth: 1))
+            // A task with no time has nothing to remind about.
+            .opacity(premium.isPremium && !hasTime ? 0.5 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(premium.isPremium && !hasTime)
         .accessibilityLabel(premium.isPremium ? "Reminder \(isOn ? "on" : "off")" : "Reminders, Premium")
         .position(center)
     }
@@ -2117,7 +2156,7 @@ struct AddTaskSheet: View {
     }
 
     private var timeText: String {
-        dueDate.formatted(.dateTime.hour().minute())
+        hasTime ? dueDate.formatted(.dateTime.hour().minute()) : "No time"
     }
 
     private static let ink = Color(red: 0.08, green: 0.13, blue: 0.26)
