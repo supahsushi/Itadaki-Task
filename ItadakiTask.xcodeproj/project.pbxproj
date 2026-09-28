@@ -17,6 +17,7 @@
 		8D8C7E4A2C00000100D4A100 /* CollectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E492C00000100D4A100 /* CollectionScreen.swift */; };
 		8D8C7E4C2C00000100D4A100 /* NewCustomerArrivalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */; };
 		8D8C7E4E2C00000100D4A100 /* PremiumStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E4D2C00000100D4A100 /* PremiumStore.swift */; };
+		8D8C7E502C00000100D4A100 /* ProfileScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8C7E4F2C00000100D4A100 /* ProfileScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 		8D8C7E492C00000100D4A100 /* CollectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionScreen.swift; sourceTree = "<group>"; };
 		8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCustomerArrivalView.swift; sourceTree = "<group>"; };
 		8D8C7E4D2C00000100D4A100 /* PremiumStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumStore.swift; sourceTree = "<group>"; };
+		8D8C7E4F2C00000100D4A100 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -76,6 +78,7 @@
 				8D8C7E492C00000100D4A100 /* CollectionScreen.swift */,
 				8D8C7E4B2C00000100D4A100 /* NewCustomerArrivalView.swift */,
 				8D8C7E4D2C00000100D4A100 /* PremiumStore.swift */,
+				8D8C7E4F2C00000100D4A100 /* ProfileScreen.swift */,
 				8D8C7E382C00000100D4A100 /* Assets.xcassets */,
 				8D8C7E402C00000100D4A100 /* ItadakiTask.entitlements */,
 			);
@@ -166,6 +169,7 @@
 				8D8C7E4A2C00000100D4A100 /* CollectionScreen.swift in Sources */,
 				8D8C7E4C2C00000100D4A100 /* NewCustomerArrivalView.swift in Sources */,
 				8D8C7E4E2C00000100D4A100 /* PremiumStore.swift in Sources */,
+				8D8C7E502C00000100D4A100 /* ProfileScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -405,6 +405,7 @@ struct ContentView: View {
     @State private var editingTask: SushiTask?
     @State private var showingAchievements = false
     @State private var showingCollection = false
+    @State private var showingProfile = false
     @State private var menuDestinationAfterAddTask: AddTaskMenuDestination?
     @State private var showingNamePrompt = false
     @State private var draftName = ""
@@ -451,6 +452,9 @@ struct ContentView: View {
 
                 OrderMenuHitZones(
                     artworkFrame: artworkFrame,
+                    openProfile: {
+                        showingProfile = true
+                    },
                     openCollection: {
                         showingCollection = true
                     },
@@ -511,6 +515,21 @@ struct ContentView: View {
                 await PremiumStore.shared.start()
                 syncRemindersWithPremium()
             }
+        }
+        .fullScreenCover(isPresented: $showingProfile, onDismiss: openMenuDestinationAfterAddTask) {
+            ProfileScreen(
+                name: $customerName,
+                levelInfo: streakLevelInfo,
+                totalSushiEaten: sushiTotalCompletions,
+                eatenToday: sushiEatenToday,
+                mealLimit: mealLimit,
+                achievements: achievements,
+                characters: collectionCharacters,
+                navigate: { destination in
+                    menuDestinationAfterAddTask = destination
+                    showingProfile = false
+                }
+            )
         }
         .fullScreenCover(item: $editingTask, onDismiss: openMenuDestinationAfterAddTask) { task in
             AddTaskSheet(
@@ -601,6 +620,10 @@ struct ContentView: View {
         guard let destination = menuDestinationAfterAddTask else { return }
         menuDestinationAfterAddTask = nil
         switch destination {
+        case .profile:
+            showingProfile = true
+        case .orders:
+            showingAddTask = true
         case .collection:
             showingCollection = true
         case .achievements:
@@ -1286,6 +1309,12 @@ struct StreakLevelInfo {
         Self.milestones.lastIndex(where: { streakDays >= $0 }) ?? 0
     }
 
+    /// Streak days still needed to reach the next level, or nil at the top level.
+    var daysToNextLevel: Int? {
+        guard level < Self.milestones.count - 1 else { return nil }
+        return max(0, Self.milestones[level + 1] - streakDays)
+    }
+
     var progress: Double {
         guard level < Self.milestones.count - 1 else { return 1 }
         let currentMilestone = Self.milestones[level]
@@ -1461,12 +1490,24 @@ struct ArtworkNavigationHitZones: View {
 
 struct OrderMenuHitZones: View {
     var artworkFrame: CGRect
+    var openProfile: () -> Void
     var openCollection: () -> Void
     var openAchievements: () -> Void
     var openOrders: () -> Void
 
     var body: some View {
         ZStack {
+            Button(action: openProfile) {
+                Color.black.opacity(0.001)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Profile")
+            .frame(width: artworkFrame.width * 0.17, height: artworkFrame.height * 0.063)
+            .position(
+                x: artworkFrame.minX + artworkFrame.width * 0.13,
+                y: artworkFrame.minY + artworkFrame.height * 0.956
+            )
+
             Button(action: openOrders) {
                 Color.black.opacity(0.001)
             }
@@ -1763,7 +1804,10 @@ struct EatenSparkles: View {
     }
 }
 
+/// A bottom-menu destination opened after the current full-screen view closes.
 enum AddTaskMenuDestination {
+    case profile
+    case orders
     case collection
     case achievements
 }
@@ -1831,7 +1875,10 @@ struct AddTaskSheet: View {
                 .position(close)
 
                 // The order artwork paints the bottom menu, so it needs its own tap zones.
-                // Orders is this screen; Home is reserved for the future profile page.
+                // Orders is this screen.
+                menuHitZone("Open Profile", centerX: 0.125, artworkFrame: artworkFrame) {
+                    openMenuDestination(.profile)
+                }
                 menuHitZone("Back to Chef", centerX: 0.5, artworkFrame: artworkFrame) {
                     dismiss()
                 }
