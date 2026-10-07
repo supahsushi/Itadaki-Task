@@ -431,6 +431,8 @@ struct ContentView: View {
     @State private var recentlyEatenTaskIDs: Set<SushiTask.ID> = []
     @State private var currentAchievementUnlock: Achievement?
     @State private var currentCustomerArrival: CollectionCharacter?
+    @State private var showingPremium = false
+    @ObservedObject private var premium = PremiumStore.shared
 
     private let daypart = Daypart()
 
@@ -468,6 +470,8 @@ struct ContentView: View {
                     layout: layout,
                     mapper: mapper
                 )
+
+                premiumShortcut(artworkFrame: artworkFrame, scale: mapper.scale)
 
                 OrderMenuHitZones(
                     artworkFrame: artworkFrame,
@@ -540,6 +544,9 @@ struct ContentView: View {
         .fullScreenCover(isPresented: activeScreenIsPresented, onDismiss: menuScreenDismissed) {
             menuScreenContent
         }
+        .sheet(isPresented: $showingPremium) {
+            PremiumSheet()
+        }
         .fullScreenCover(item: $currentAchievementUnlock) { achievement in
             GachaponUnlockView(
                 achievement: achievement,
@@ -575,6 +582,37 @@ struct ContentView: View {
             // Scheduled reminders keep the sound they were created with, so reschedule them.
             syncRemindersWithPremium()
         }
+    }
+
+    private func premiumShortcut(artworkFrame: CGRect, scale: CGFloat) -> some View {
+        let width = max(138, 218 * scale)
+        let height = max(42, 54 * scale)
+        return Button {
+            showingPremium = true
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: premium.isPremium ? "checkmark.seal.fill" : "crown.fill")
+                    .font(.system(size: 17, weight: .black))
+                Text("Premium")
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            .foregroundStyle(.white)
+            .frame(width: width, height: height)
+            .background(
+                (premium.isPremium ? Color(red: 0.20, green: 0.66, blue: 0.42) : Color(red: 1.0, green: 0.27, blue: 0.51)).gradient,
+                in: Capsule()
+            )
+            .overlay(Capsule().stroke(Color.white.opacity(0.78), lineWidth: 2))
+            .shadow(color: .black.opacity(0.32), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .position(
+            x: artworkFrame.midX,
+            y: artworkFrame.minY + max(96, 226 * scale)
+        )
+        .accessibilityLabel(premium.isPremium ? "Premium unlocked" : "Open Premium purchase")
     }
 
     private var activeScreenIsPresented: Binding<Bool> {
