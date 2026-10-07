@@ -23,6 +23,7 @@ struct AchievementsScreen: View {
                     ForEach(achievements) { achievement in
                         VStack(spacing: 8) {
                             Button {
+                                guard achievement.isUnlocked else { return }
                                 selectedAchievement = achievement
                             } label: {
                                 AchievementBadgeCell(
@@ -31,6 +32,7 @@ struct AchievementsScreen: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .disabled(!achievement.isUnlocked)
 
                             #if DEBUG
                             if achievement.isUnlocked {
@@ -107,15 +109,14 @@ struct AchievementBadgeCell: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
-                BadgeArtwork(achievement: achievement)
-                    .frame(width: 86, height: 86)
-                    .clipShape(Circle())
-                    .saturation(achievement.isUnlocked ? 1 : 0)
-                    .opacity(achievement.isUnlocked ? 1 : 0.28)
-
-                if !achievement.isUnlocked {
+                if achievement.isUnlocked {
+                    BadgeArtwork(achievement: achievement)
+                        .frame(width: 86, height: 86)
+                        .clipShape(Circle())
+                } else {
                     Circle()
-                        .fill(Color.black.opacity(0.44))
+                        .fill(Color(red: 0.52, green: 0.44, blue: 0.36).opacity(0.62))
+                        .frame(width: 86, height: 86)
                     Image(systemName: "lock.fill")
                         .font(.system(size: 24, weight: .black))
                         .foregroundStyle(.white)
