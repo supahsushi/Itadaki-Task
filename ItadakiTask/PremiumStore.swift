@@ -1,4 +1,5 @@
 import AVFoundation
+import OSLog
 import StoreKit
 import SwiftUI
 
@@ -26,9 +27,12 @@ final class PremiumStore: ObservableObject {
     @Published private(set) var isPremium: Bool
     @Published private(set) var product: Product?
     @Published private(set) var isPurchasing = false
+    @Published private(set) var isLoadingProduct = false
     @Published var errorMessage: String?
 
     private var updatesTask: Task<Void, Never>?
+    private var productLoadTask: Task<Product?, Never>?
+    private static let logger = Logger(subsystem: "com.sushichamploo.itadakitask", category: "Purchases")
 
     private init() {
         isPremium = UserDefaults.standard.bool(forKey: Self.cacheKey)
@@ -50,7 +54,33 @@ final class PremiumStore: ObservableObject {
 
     func loadProduct() async {
         guard product == nil else { return }
-        product = try? await Product.products(for: [Self.productID]).first
+        if let productLoadTask {
+            product = await productLoadTask.value
+            return
+        }
+
+        isLoadingProduct = true
+        errorMessage = nil
+        let task = Task<Product?, Never> {
+            do {
+                let products = try await Product.products(for: [Self.productID])
+                guard let product = products.first(where: { $0.id == Self.productID }) else {
+                    Self.logger.error("StoreKit returned no product for \(Self.productID, privacy: .public)")
+                    self.errorMessage = "The App Store couldn't load Premium. Please try again."
+                    return nil
+                }
+                return product
+            } catch {
+                let nsError = error as NSError
+                Self.logger.error("Product request failed: \(nsError.domain, privacy: .public) (\(nsError.code)): \(nsError.localizedDescription, privacy: .public)")
+                self.errorMessage = "Couldn't connect to the App Store. \(error.localizedDescription)"
+                return nil
+            }
+        }
+        productLoadTask = task
+        product = await task.value
+        productLoadTask = nil
+        isLoadingProduct = false
     }
 
     func refreshEntitlement() async {
@@ -70,19 +100,16 @@ final class PremiumStore: ObservableObject {
         setPremium(owned)
     }
 
-    func purchase() async {
-        errorMessage = nil
-        await loadProduct()
-        guard let product else {
-            errorMessage = "Premium isn't available right now. Please try again later."
-            return
-        }
-
+    func purchase(using purchaseAction: PurchaseAction) async {
+        guard !isPurchasing else { return }
         isPurchasing = true
         defer { isPurchasing = false }
+        errorMessage = nil
+        await loadProduct()
+        guard let product else { return }
 
         do {
-            switch try await product.purchase() {
+            switch try await purchaseAction(product) {
             case .success(let verification):
                 if case .verified(let transaction) = verification {
                     await transaction.finish()
@@ -98,6 +125,8 @@ final class PremiumStore: ObservableObject {
                 break
             }
         } catch {
+            let nsError = error as NSError
+            Self.logger.error("Purchase failed: \(nsError.domain, privacy: .public) (\(nsError.code)): \(nsError.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
         }
     }
@@ -136,6 +165,7 @@ final class PremiumStore: ObservableObject {
 struct PremiumSheet: View {
     @ObservedObject private var store = PremiumStore.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.purchase) private var purchaseAction
 
     private let ink = Color(red: 0.19, green: 0.11, blue: 0.06)
     private let pink = Color(red: 1.0, green: 0.22, blue: 0.50)
@@ -173,13 +203,19 @@ struct PremiumSheet: View {
                     .padding(.vertical, 12)
             } else {
                 Button {
-                    Task { await store.purchase() }
+                    Task {
+                        if store.product == nil {
+                            await store.loadProduct()
+                        } else {
+                            await store.purchase(using: purchaseAction)
+                        }
+                    }
                 } label: {
                     Group {
-                        if store.isPurchasing {
+                        if store.isPurchasing || store.isLoadingProduct {
                             ProgressView().tint(.white)
                         } else {
-                            Text(store.product.map { "Unlock for \($0.displayPrice)" } ?? "Unlock Premium")
+                            Text(store.product.map { "Unlock for \($0.displayPrice)" } ?? "Try Again")
                         }
                     }
                     .font(.system(size: 19, weight: .black, design: .rounded))
@@ -188,7 +224,8 @@ struct PremiumSheet: View {
                     .frame(height: 54)
                     .background(pink.gradient, in: Capsule())
                 }
-                .disabled(store.isPurchasing)
+                .disabled(store.isPurchasing || store.isLoadingProduct)
+                .accessibilityLabel(store.isLoadingProduct ? "Loading Premium price" : store.isPurchasing ? "Purchasing Premium" : store.product.map { "Unlock for \($0.displayPrice)" } ?? "Try loading Premium again")
                 .padding(.horizontal, 20)
             }
 
@@ -198,6 +235,7 @@ struct PremiumSheet: View {
             }
             .font(.system(size: 15, weight: .bold, design: .rounded))
             .foregroundStyle(ink.opacity(0.7))
+            .disabled(store.isPurchasing || store.isLoadingProduct)
 
             if let message = store.errorMessage {
                 Text(message)
