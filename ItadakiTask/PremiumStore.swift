@@ -177,7 +177,7 @@ struct PremiumSheet: View {
                 .padding(.top, 28)
 
             VStack(spacing: 6) {
-                Text("Chef's Reminders")
+                Text("Itadaki Premium")
                     .font(.system(size: 28, weight: .black, design: .rounded))
                 Text("A one-time Premium unlock")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
@@ -186,6 +186,7 @@ struct PremiumSheet: View {
             .foregroundStyle(ink)
 
             VStack(alignment: .leading, spacing: 12) {
+                feature("checklist", "Unlimited active tasks (Free includes 3)")
                 feature("alarm.fill", "Scheduled reminders at each task's time")
                 feature("speaker.wave.2.fill", "Chef's custom notification sound")
                 feature("repeat", "Works with Daily, Weekdays, and Weekends tasks")

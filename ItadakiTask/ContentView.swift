@@ -631,6 +631,7 @@ struct ContentView: View {
                 AddTaskSheet(
                     daypart: daypart,
                     header: menuHeader,
+                    canAddTask: { PremiumStore.isPremiumCached || tasks.filter { !$0.isEaten }.count < 3 },
                     addTask: { task in
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
                             tasks.append(task)
@@ -1928,6 +1929,7 @@ struct AddTaskSheet: View {
     var editing: SushiTask? = nil
     /// Live name, level, and sushi count for the empty top panels in the art.
     var header: GachaponHeader? = nil
+    var canAddTask: () -> Bool
     var addTask: (SushiTask) -> Void
     var openMenuDestination: (AddTaskMenuDestination) -> Void
 
@@ -1947,12 +1949,14 @@ struct AddTaskSheet: View {
         daypart: Daypart,
         editing: SushiTask? = nil,
         header: GachaponHeader? = nil,
+        canAddTask: @escaping () -> Bool = { true },
         addTask: @escaping (SushiTask) -> Void,
         openMenuDestination: @escaping (AddTaskMenuDestination) -> Void
     ) {
         self.daypart = daypart
         self.editing = editing
         self.header = header
+        self.canAddTask = canAddTask
         self.addTask = addTask
         self.openMenuDestination = openMenuDestination
         _title = State(initialValue: editing?.title ?? "")
@@ -2103,6 +2107,10 @@ struct AddTaskSheet: View {
 
     private func submitTask() {
         guard !trimmedTitle.isEmpty else { return }
+        guard editing != nil || canAddTask() else {
+            showingPremium = true
+            return
+        }
         if var task = editing {
             task.title = String(trimmedTitle.prefix(60))
             task.category = category
